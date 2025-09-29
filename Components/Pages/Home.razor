@@ -1,0 +1,129 @@
+﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@using System.Diagnostics
+@using System.Timers
+@inject AuthenticationStateProvider AuthProvider
+
+<PageTitle>Home</PageTitle>
+
+<h1 class="impact mb-3">ABI27</h1>
+
+<h1 class="text-center display-3 fw-bold">ABI COUNTDOWN</h1>
+
+<div id="countdown" class="text-center countdown-container mb-5" style="font-size:2rem; font-weight:bold;"></div>
+<style>
+    .countdown-container {
+        display: flex;
+        flex-wrap: wrap; /* Blocke umbrechen bei kleinen Bildschirmen */
+        justify-content: center;
+        gap: 0.5rem;
+        font-family: 'Courier New', monospace;
+    }
+
+    .countdown-block {
+        background: #222;
+        color: #fff;
+        padding: 0.8rem 1rem; /* kleineres Padding für mobile */
+        border-radius: 0.8rem;
+        box-shadow: 0 0 15px rgba(0,0,0,0.5);
+        min-width: 60px; /* schmaler */
+        flex: 1 1 60px; /* flexibel, wächst mit Container */
+        font-size: 1.5rem; /* kleinere Schrift für mobile */
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+        .countdown-block span {
+            font-size: 2rem; /* kleinere Zahlen auf Handy */
+            font-weight: bold;
+        }
+
+    .countdown-label {
+        font-size: 0.8rem; /* kleinere Beschriftung */
+        margin-top: 0.1rem;
+    }
+    .countdown-block span {
+        font-size: 1.5rem;
+    }
+
+    .countdown-label {
+        font-size: 0.7rem;
+    }
+
+    }
+</style>
+
+<script>
+    const targetDate = new Date("2027-06-01T21:13:00"); // Ziel-Datum
+    const countdownEl = document.getElementById("countdown");
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    function pad(n) {
+        return n.toString().padStart(2, '0');
+    }
+    function updateCountdown() {
+        const now = new Date();
+        let diff = targetDate - now; // Millisekunden
+
+        if (diff <= 0) {
+            countdownEl.innerHTML = '<div class="countdown-block">🎉 ABI TIME!</div>';
+            clearInterval(timer);
+            return;
+        }
+
+        const months = Math.floor(diff / (1000*60*60*24*30));
+        diff -= months * 1000*60*60*24*30;
+
+        const days = Math.floor(diff / (1000*60*60*24));
+        diff -= days * 1000*60*60*24;
+
+        const hours = Math.floor(diff / (1000*60*60));
+        diff -= hours * 1000*60*60;
+
+        const minutes = Math.floor(diff / (1000*60));
+        diff -= minutes * 1000*60;
+
+        const seconds = Math.floor(diff / 1000);
+
+        countdownEl.innerHTML = `
+            <div class="countdown-block"><span>${months}</span><div class="countdown-label">Monate</div></div>
+            <div class="countdown-block"><span>${days}</span><div class="countdown-label">Tage</div></div>
+            <div class="countdown-block"><span>${pad(hours)}</span><div class="countdown-label">Stunden</div></div>
+            <div class="countdown-block"><span>${pad(minutes)}</span><div class="countdown-label">Minuten</div></div>
+            <div class="countdown-block"><span>${pad(seconds)}</span><div class="countdown-label">Sekunden</div></div>
+        `;
+    }
+
+</script>
+
+@if (name != null)
+{
+    <h2>Hallo, @name 🤗</h2>
+}
+
+<h1 class="text-center display-3 fw-bold" style="color: orangered; text-decoration: overline; text-decoration-color: aqua">MOTTO RANKING</h1>
+<button class="btn btn-success" onclick="document.location = '/mottoranking'">Zu den Vorschlägen</button>
+
+
+@code {
+    private string? name;
+    private string? tutor;
+    private string? nickname;
+    private int studentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            studentId = int.Parse(user.FindFirst("StudentId")!.Value);
+            name = user.Identity.Name;
+            tutor = user.FindFirst("Tutor")?.Value;
+            nickname = user.FindFirst("Nickname")?.Value;
+        }
+    }
+}

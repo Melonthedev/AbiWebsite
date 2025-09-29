@@ -1,0 +1,118 @@
+﻿@page "/mottoranking"
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using System.Diagnostics
+@inject AbiDbContext Db
+@inject NavigationManager Navigation
+
+<h3>Abi Motto Ranking</h3>
+
+<table class="table-dark table">
+    <thead>
+        <tr>
+            <th>Platz</th>
+            <th>Motto</th>
+            <th>Score</th>
+            <th>Deine Stimme</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var suggestion in rankedSuggestions)
+        {
+            <tr>
+                <td>@(++rank)</td>
+                <td>@suggestion.Title</td>
+                <td>
+                    👍 @suggestion.UpVotes | 👎 @suggestion.DownVotes |
+                    <b>Score: @suggestion.Score</b>
+                </td>
+                <td>
+                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
+                    @onclick="() => Vote(suggestion.Id, 1)">
+                        👍
+                    </button>
+                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, -1))"
+                    @onclick="() => Vote(suggestion.Id, -1)">
+                        👎
+                    </button>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<button class="btn btn-success floating-btn" onclick="document.location = '/submitmotto'">
+    <i class="bi bi-plus"></i> Vorschlag Einreichen
+</button>
+
+@code {
+
+    private List<SuggestionVm> rankedSuggestions = new();
+    private int currentStudentId = 1; // TODO: ersetzen durch den eingeloggten Student
+
+    private int rank = 0;
+
+    protected override void OnInitialized()
+    {
+        LoadSuggestions();
+    }
+
+    private void LoadSuggestions()
+    {
+        rankedSuggestions = Db.MottoSuggestions
+            .Select(s => new SuggestionVm
+                {
+                    Id = s.Id,
+                    Title = s.Title,
+                    UpVotes = s.Votes.Count(v => v.Value == 1),
+                    DownVotes = s.Votes.Count(v => v.Value == -1),
+                    UserVote = s.Votes.FirstOrDefault(v => v.StudentId == currentStudentId) == null ? 0 : s.Votes.First(v => v.StudentId == currentStudentId).Value
+                })
+            .AsEnumerable()
+            .Select(s => { s.Score = s.UpVotes - s.DownVotes; return s; })
+            .OrderByDescending(s => s.Score)
+            .ToList();
+    }
+
+    private void Vote(int suggestionId, int value)
+    {
+        var vote = Db.Votes.FirstOrDefault(v => v.StudentId == currentStudentId && v.MottoSuggestionId == suggestionId);
+
+        if (vote == null)
+        {
+            Db.Votes.Add(new Vote
+                {
+                    StudentId = currentStudentId,
+                    MottoSuggestionId = suggestionId,
+                    Value = value
+                });
+        }
+        else
+        {
+            vote.Value = value; // überschreibt alte Stimme
+        }
+
+        Db.SaveChanges();
+        LoadSuggestions();
+    }
+
+    private string GetVoteClass(int suggestionId, int value)
+    {
+        var existing = Db.Votes.FirstOrDefault(v => v.StudentId == currentStudentId && v.MottoSuggestionId == suggestionId);
+        if (existing != null && existing.Value == value)
+        {
+            return "btn-primary"; // markiert aktuell gewählten Button
+        }
+        return "btn-outline-secondary";
+    }
+
+    private class SuggestionVm
+    {
+        public int Id { get; set; }
+        public string Title { get; set; } = string.Empty;
+        public int UpVotes { get; set; }
+        public int DownVotes { get; set; }
+        public int Score { get; set; }
+        public int UserVote { get; set; }
+    }
+}

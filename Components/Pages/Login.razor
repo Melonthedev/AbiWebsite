@@ -1,0 +1,91 @@
+﻿@page "/login"
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Security.Claims
+@inject AbiDbContext Db
+@inject ProtectedSessionStorage Session
+@inject NavigationManager Navigation
+@inject IHttpContextAccessor HttpContextAccessor
+
+<h3>Login</h3>
+
+@if (!string.IsNullOrEmpty(Message))
+{
+     <div class="alert alert-info">@Message</div>
+}
+
+<EditForm Model="StudentModel" OnValidSubmit="HandleLogin" FormName="login">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Full Name</label>
+        <InputText class="form-control" @bind-Value="StudentModel.FullName" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Nickname</label>
+        <InputText class="form-control" @bind-Value="StudentModel.Nickname" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Tutor</label>
+        <InputText class="form-control" @bind-Value="StudentModel.Tutor" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Login</button>
+</EditForm>
+
+@code {
+
+    [SupplyParameterFromForm]
+    private Student StudentModel { get; set; } = new();
+    private string? Message;
+
+    private async Task HandleLogin()
+    {
+        // Prüfen, ob Student schon existiert
+        var student = Db.Students.FirstOrDefault(s =>
+            s.FullName == StudentModel.FullName);
+
+        if (student == null)
+        {
+            // Neuen Student anlegen
+            student = new Student
+                {
+                    FullName = StudentModel.FullName,
+                    Tutor = StudentModel.Tutor,
+                    Nickname = StudentModel.Nickname
+                };
+            Db.Students.Add(student);
+            await Db.SaveChangesAsync();
+        }
+
+        // ✅ Claims bauen
+        var claims = new List<Claim>
+        {
+            new Claim(ClaimTypes.Name, student.FullName),
+            new Claim("Tutor", student.Tutor),
+            new Claim("Nickname", student.Nickname),
+            new Claim("StudentId", student.Id.ToString())
+        };
+
+        var identity = new ClaimsIdentity(claims, "CookieAuth");
+        var principal = new ClaimsPrincipal(identity);
+
+        // ✅ Cookie setzen
+        await HttpContextAccessor.HttpContext!.SignInAsync(
+            "CookieAuth",
+            principal,
+            new AuthenticationProperties
+                {
+                    IsPersistent = true,
+                    ExpiresUtc = DateTime.UtcNow.AddDays(30)
+                });
+
+        Message = $"✅ Eingeloggt als {student.FullName}";
+    }
+
+}

@@ -1,0 +1,59 @@
+﻿@page "/submitmotto"
+@attribute [Authorize]
+@attribute [IgnoreAntiforgeryToken]
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Mvc
+@inject AbiDbContext Db
+
+
+<h3>Abi Motto Einreichen</h3>
+
+@if (Message != null)
+{
+    <div class="alert @MessageClass">@Message</div>
+}
+
+<EditForm Model="newSuggestion" OnValidSubmit="HandleValidSubmit" FormName="suggestionform">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label for="title" class="form-label">Motto</label>
+        <InputText id="title" class="form-control" @bind-Value="newSuggestion.Title" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Submit</button>
+</EditForm>
+
+@code {
+    private string? Message;
+    private string MessageClass = "alert-success";
+
+    [SupplyParameterFromForm(FormName = "suggestionform")]
+    public MottoSuggestion newSuggestion { get; set; } = new();
+
+    // TODO: aktuelle Schüler-ID setzen
+    private int currentStudentId = 1;
+
+    private async Task HandleValidSubmit()
+    {
+        if (string.IsNullOrWhiteSpace(newSuggestion.Title) ||
+            newSuggestion.Title.Length < 5 || newSuggestion.Title.Length > 50)
+        {
+            Message = "❌ Dein Motto muss zwischen 5 und 50 Zeichen lang sein.";
+            MessageClass = "alert-danger";
+            return;
+        }
+
+        newSuggestion.StudentId = currentStudentId;
+        Db.MottoSuggestions.Add(newSuggestion);
+        await Db.SaveChangesAsync();
+
+        Message = "✅ Motto erfolgreich eingereicht!";
+        MessageClass = "alert-success";
+
+        newSuggestion = new MottoSuggestion(); // Formular zurücksetzen
+    }
+}
