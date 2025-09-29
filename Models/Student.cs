@@ -1,11 +1,15 @@
-﻿namespace AbiWebsite.Models {
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace AbiWebsite.Models {
     public class Student {
         public int Id { get; set; }
 
         // Basisinfos
+        [Required(ErrorMessage = "Name kann nicht leer sein.")]
         public string FullName { get; set; } = string.Empty;
         public string? Nickname { get; set; }
-        public string? Tutor { get; set; } // z.B. 13A, 13B
+        [Required(ErrorMessage = "Tutor muss ausgewählt werden.")]
+        public string Tutor { get; set; } 
         public string? Traits { get; set; } // Eigenschaften (frei oder kommagetrennt)
 
         // Login / Auth (optional)

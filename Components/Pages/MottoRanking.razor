@@ -7,7 +7,7 @@
 
 <h3>Abi Motto Ranking</h3>
 
-<table class="table-dark table">
+<!--<table class="table-dark table">
     <thead>
         <tr>
             <th>Platz</th>
@@ -16,10 +16,10 @@
             <th>Deine Stimme</th>
         </tr>
     </thead>
-    <tbody>
+    <tbody>-->
         @foreach (var suggestion in rankedSuggestions)
         {
-            <tr>
+            <!--<tr>
                 <td>@(++rank)</td>
                 <td>@suggestion.Title</td>
                 <td>
@@ -36,10 +36,45 @@
                         👎
                     </button>
                 </td>
-            </tr>
+    </tr>-->
         }
-    </tbody>
-</table>
+<!--</tbody>
+</table>-->
+
+
+<div class="ranking-container">
+    @if (rankedSuggestions?.Any() == true)
+    {
+        int rank = 0;
+        @foreach (var suggestion in rankedSuggestions)
+        {
+            <div class="rank-card">
+                <div class="rank-number">#@(++rank)</div>
+                <div class="suggestion-title">@suggestion.Title</div>
+                <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
+                <div class="votes">
+                    <span>👍 @suggestion.UpVotes</span> |
+                    <span>👎 @suggestion.DownVotes</span>
+                </div>
+                <div class="vote-buttons">
+                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
+                            @onclick="() => Vote(suggestion.Id, 1)">
+                        👍
+                    </button>
+                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, -1))"
+                            @onclick="() => Vote(suggestion.Id, -1)">
+                        👎
+                    </button>
+                </div>
+            </div>
+        }
+    }
+    else
+    {
+        <p>Keine Vorschläge vorhanden.</p>
+    }
+</div>
+
 
 <button class="btn btn-success floating-btn" onclick="document.location = '/submitmotto'">
     <i class="bi bi-plus"></i> Vorschlag Einreichen
@@ -64,6 +99,7 @@
                 {
                     Id = s.Id,
                     Title = s.Title,
+                    Author = s.Student.FullName,
                     UpVotes = s.Votes.Count(v => v.Value == 1),
                     DownVotes = s.Votes.Count(v => v.Value == -1),
                     UserVote = s.Votes.FirstOrDefault(v => v.StudentId == currentStudentId) == null ? 0 : s.Votes.First(v => v.StudentId == currentStudentId).Value
@@ -110,6 +146,7 @@
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
+        public string Author { get; set; } = string.Empty;
         public int UpVotes { get; set; }
         public int DownVotes { get; set; }
         public int Score { get; set; }

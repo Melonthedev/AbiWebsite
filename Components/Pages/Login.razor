@@ -9,7 +9,7 @@
 @inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 
-<h3>Login</h3>
+<h3 class="mb-5">Login</h3>
 
 @if (!string.IsNullOrEmpty(Message))
 {
@@ -21,24 +21,44 @@
     <ValidationSummary />
 
     <div class="mb-3">
-        <label class="form-label">Full Name</label>
+        <label class="form-label">Vollständiger Name</label>
         <InputText class="form-control" @bind-Value="StudentModel.FullName" />
     </div>
 
     <div class="mb-3">
-        <label class="form-label">Nickname</label>
+        <label class="form-label">Nickname*</label>
         <InputText class="form-control" @bind-Value="StudentModel.Nickname" />
     </div>
 
     <div class="mb-3">
         <label class="form-label">Tutor</label>
-        <InputText class="form-control" @bind-Value="StudentModel.Tutor" />
+        <InputSelect class="form-control" @bind-Value="StudentModel.Tutor">
+            <option value="">-- Bitte wählen --</option>
+            @foreach (var tutor in Tutors)
+            {
+                <option value="@tutor.Id">@tutor.Name</option>
+            }
+        </InputSelect>
     </div>
 
     <button type="submit" class="btn btn-primary">Login</button>
 </EditForm>
 
 @code {
+
+    private List<TutorOption> Tutors = new List<TutorOption>
+    {
+        new TutorOption { Id = "LIM", Name = "Lindenthal" },
+        new TutorOption { Id = "ZIP", Name = "Zippel" },
+        new TutorOption { Id = "HEL", Name = "Heller" },
+        new TutorOption { Id = "KLS", Name = "Kleinschmidt" }
+    };
+
+    public class TutorOption
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
 
     [SupplyParameterFromForm]
     private Student StudentModel { get; set; } = new();
