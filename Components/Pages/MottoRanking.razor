@@ -7,6 +7,7 @@
 @using System.Diagnostics
 @using AbiWebsite.Models.ViewModels
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
 
 @inject AbiDbContext Db
 @inject NavigationManager Navigation
@@ -59,8 +60,13 @@
 
 
 @code {
+    // Dictionary zum Merken, welche Suggestion die Votes zeigt
+    private Dictionary<int, bool> showVotes = new();
+
     RenderFragment<SuggestionVm> RenderSuggestionCard => suggestion => __builder =>
     {
+        var isShowing = showVotes.TryGetValue(suggestion.Id, out var val) && val;
+
         <div class="rank-card">
             <div class="rank-number">#@(bestSuggestions.IndexOf(suggestion) + 1)</div>
             <div class="suggestion-title">@suggestion.Title</div>
@@ -68,7 +74,40 @@
             <div class="votes">
                 <span>👍 @suggestion.UpVotes.Count()</span> |
                 <span>👎 @suggestion.DownVotes.Count()</span>
+                
             </div>
+            <div class="vote-display d-flex justify-content-center align-items-center flex-column">
+                <button id="toggleCountdownBtn" class="btn text-white btn-out d-inline-flex align-items-center gap-2"
+                        aria-pressed="false" title="Hide countdown" @onclick="() => ToggleShowVotes(suggestion.Id)">
+                    <i class="bi bi-chevron-down"></i> Mehr Details
+                </button>
+                @if (isShowing)
+                {
+                    <div class="row mt-2 w-100">
+                        <div class="col">
+                            <p class="w-100 text-center">👍</p>
+                            <ul>
+                                @foreach (var vote in suggestion.UpVotes)
+                                {
+                                    <li>@vote.Student.FullName</li>
+                                }
+                            </ul>
+                        </div>
+                        <div class="col">
+                            <p class="w-100 text-center">👎</p>
+                            <ul>
+                                @foreach (var vote in suggestion.DownVotes)
+                                {
+                                    <li>@vote.Student.FullName</li>
+                                }
+                            </ul>
+                        </div>
+                    </div>
+                }
+
+                <p class="mt-3 mb-0">Deine Stimme:</p>
+            </div>
+            
             <div class="vote-buttons">
                 <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
                 @onclick="() => Vote(suggestion.Id, 1)">
@@ -82,7 +121,17 @@
         </div>
         ;
     };
+
+    private void ToggleShowVotes(int suggestionId)
+    {
+        if (showVotes.ContainsKey(suggestionId))
+            showVotes[suggestionId] = !showVotes[suggestionId];
+        else
+            showVotes[suggestionId] = true;
+        StateHasChanged();
+    }
 }
+
 
 
 @code {
@@ -122,6 +171,8 @@
             }
         }
         var all = Db.MottoSuggestions
+            .Include(s => s.Votes)
+                .ThenInclude(v => v.Student)
             .Select(s => new SuggestionVm
                 {
                     Id = s.Id,
