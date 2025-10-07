@@ -1,14 +1,19 @@
 ﻿@page "/submitmotto"
 @attribute [Authorize]
 @attribute [IgnoreAntiforgeryToken]
+<PageTitle>Motto Vorschlagen</PageTitle>
+
 @using AbiWebsite.Data
 @using AbiWebsite.Models
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.Mvc
+
 @inject AbiDbContext Db
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
 
-
-<h3>Abi Motto Einreichen</h3>
+<h3>Abi-Motto Einreichen</h3>
 
 @if (Message != null)
 {
@@ -21,21 +26,36 @@
 
     <div class="mb-3">
         <label for="title" class="form-label">Motto</label>
-        <InputText id="title" class="form-control" @bind-Value="newSuggestion.Title" />
+        <InputText id="title" class="form-control bg-dark text-white" @bind-Value="newSuggestion.Title" />
     </div>
 
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <button type="submit" class="btn btn-primary">Absenden</button>
 </EditForm>
 
 @code {
-    private string? Message;
-    private string MessageClass = "alert-success";
+    private string? Message = "Dein Vorschlag sollte am Besten aus einem kurzen, prägnanten Hauptspruch und einer Ergänzung/Erklärung bestehen";
+    private string MessageClass = "alert-info";
 
     [SupplyParameterFromForm(FormName = "suggestionform")]
     public MottoSuggestion newSuggestion { get; set; } = new();
 
-    // TODO: aktuelle Schüler-ID setzen
-    private int currentStudentId = 1;
+    private int? currentStudentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var idClaim = user.FindFirst("StudentId");
+            if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+            {
+                currentStudentId = id;
+            }
+        }
+    }
+
 
     private async Task HandleValidSubmit()
     {
@@ -47,13 +67,18 @@
             return;
         }
 
-        newSuggestion.StudentId = currentStudentId;
+        if (currentStudentId == null) {
+            Navigation.NavigateTo("/login");
+            return;
+        }
+
+        newSuggestion.StudentId = currentStudentId.Value;
         Db.MottoSuggestions.Add(newSuggestion);
         await Db.SaveChangesAsync();
 
         Message = "✅ Motto erfolgreich eingereicht!";
         MessageClass = "alert-success";
 
-        newSuggestion = new MottoSuggestion(); // Formular zurücksetzen
+        newSuggestion = new MottoSuggestion();
     }
 }

@@ -1,15 +1,17 @@
 ﻿@page "/login"
+<PageTitle>Deine Daten</PageTitle>
+
 @using AbiWebsite.Data
 @using AbiWebsite.Models
 @using Microsoft.AspNetCore.Authentication
 @using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
 @using System.Security.Claims
+
 @inject AbiDbContext Db
 @inject ProtectedSessionStorage Session
-@inject NavigationManager Navigation
 @inject IHttpContextAccessor HttpContextAccessor
 
-<h3 class="mb-5">Login</h3>
+<h3 class="mb-5">Deine Daten</h3>
 
 @if (!string.IsNullOrEmpty(Message))
 {
@@ -22,17 +24,17 @@
 
     <div class="mb-3">
         <label class="form-label">Vollständiger Name</label>
-        <InputText class="form-control" @bind-Value="StudentModel.FullName" />
+        <InputText class="form-control bg-dark text-white" @bind-Value="StudentModel.FullName" />
     </div>
 
     <div class="mb-3">
         <label class="form-label">Nickname*</label>
-        <InputText class="form-control" @bind-Value="StudentModel.Nickname" />
+        <InputText class="form-control bg-dark text-white" @bind-Value="StudentModel.Nickname" />
     </div>
 
     <div class="mb-3">
         <label class="form-label">Tutor</label>
-        <InputSelect class="form-control" @bind-Value="StudentModel.Tutor">
+        <InputSelect class="form-control bg-dark text-white" @bind-Value="StudentModel.Tutor">
             <option value="">-- Bitte wählen --</option>
             @foreach (var tutor in Tutors)
             {
@@ -41,7 +43,7 @@
         </InputSelect>
     </div>
 
-    <button type="submit" class="btn btn-primary">Login</button>
+    <button type="submit" class="btn btn-primary">Fertig</button>
 </EditForm>
 
 @code {
@@ -88,7 +90,7 @@
         {
             new Claim(ClaimTypes.Name, student.FullName),
             new Claim("Tutor", student.Tutor),
-            new Claim("Nickname", student.Nickname),
+            new Claim("Nickname", student.Nickname == null ? "" : student.Nickname),
             new Claim("StudentId", student.Id.ToString())
         };
 
@@ -102,7 +104,7 @@
             new AuthenticationProperties
                 {
                     IsPersistent = true,
-                    ExpiresUtc = DateTime.UtcNow.AddDays(30)
+                    ExpiresUtc = DateTime.UtcNow.AddDays(300)
                 });
 
         Message = $"✅ Eingeloggt als {student.FullName}";

@@ -1,110 +1,102 @@
 ﻿@page "/"
+@rendermode InteractiveServer
+<PageTitle>Home</PageTitle>
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using AbiWebsite.Models.ViewModels
 @using Microsoft.AspNetCore.Components.Authorization
 @using System.Security.Claims
 @using System.Diagnostics
 @using System.Timers
-@inject AuthenticationStateProvider AuthProvider
 
-<PageTitle>Home</PageTitle>
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject AbiDbContext Db
 
 <h1 class="impact mb-3">ABI27</h1>
 
-<h1 class="text-center display-3 fw-bold">ABI COUNTDOWN</h1>
+<h1 class="text-center display-3 fw-bold countdown-container">ABI COUNTDOWN</h1>
 
-<div id="countdown" class="text-center countdown-container mb-5" style="font-size:2rem; font-weight:bold;"></div>
-<style>
-    .countdown-container {
-        display: flex;
-        flex-wrap: wrap; /* Blocke umbrechen bei kleinen Bildschirmen */
-        justify-content: center;
-        gap: 0.5rem;
-        font-family: 'Courier New', monospace;
-    }
+<div id="countdown" class="text-center countdown-container" style="font-size:2rem; font-weight:bold;"></div>
 
-    .countdown-block {
-        background: #222;
-        color: #fff;
-        padding: 0.8rem 1rem; /* kleineres Padding für mobile */
-        border-radius: 0.8rem;
-        box-shadow: 0 0 15px rgba(0,0,0,0.5);
-        min-width: 60px; /* schmaler */
-        flex: 1 1 60px; /* flexibel, wächst mit Container */
-        font-size: 1.5rem; /* kleinere Schrift für mobile */
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-    }
+<div class="d-flex justify-content-center align-items-center" style="min-height:120px;">
+    <button id="toggleCountdownBtn" class="btn text-white btn-out d-inline-flex align-items-center gap-2"
+    aria-pressed="false" title="Hide countdown">
+        <span id="iconWrap" aria-hidden="true">
+            <svg id="eyeSlash" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5 0-9.27-3-11-7 1.02-2.03 2.55-3.73 4.42-4.86"></path>
+                <path d="M1 1l22 22"></path>
+                <path d="M9.53 9.53A3.5 3.5 0 1 0 14.47 14.47"></path>
+            </svg>
+        </span>
+        <span class="fw-medium">Hide countdown</span>
+    </button>
+</div>
 
-        .countdown-block span {
-            font-size: 2rem; /* kleinere Zahlen auf Handy */
-            font-weight: bold;
-        }
-
-    .countdown-label {
-        font-size: 0.8rem; /* kleinere Beschriftung */
-        margin-top: 0.1rem;
-    }
-    .countdown-block span {
-        font-size: 1.5rem;
-    }
-
-    .countdown-label {
-        font-size: 0.7rem;
-    }
-
-    }
-</style>
 
 <script>
-    const targetDate = new Date("2027-06-01T21:13:00"); // Ziel-Datum
-    const countdownEl = document.getElementById("countdown");
-    updateCountdown();
-    const timer = setInterval(updateCountdown, 1000);
-    function pad(n) {
-        return n.toString().padStart(2, '0');
-    }
-    function updateCountdown() {
-        const now = new Date();
-        let diff = targetDate - now; // Millisekunden
+    (function(){
+    const btn = document.getElementById('toggleCountdownBtn');
+    const iconWrap = document.getElementById('iconWrap');
+    const srState = document.getElementById('srState');
 
-        if (diff <= 0) {
-            countdownEl.innerHTML = '<div class="countdown-block">🎉 ABI TIME!</div>';
-            clearInterval(timer);
-            return;
-        }
+    // SVGs für toggle (eye = visible, eye-slash = hidden)
+    const eyeSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"></path>
+    <circle cx="12" cy="12" r="3"></circle>
+    </svg>
+    `;
+    const eyeSlashSVG = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-5 0-9.27-3-11-7 1.02-2.03 2.55-3.73 4.42-4.86"></path>
+    <path d="M1 1l22 22"></path>
+    <path d="M9.53 9.53A3.5 3.5 0 1 0 14.47 14.47"></path>
+    </svg>
+    `;
 
-        const months = Math.floor(diff / (1000*60*60*24*30));
-        diff -= months * 1000*60*60*24*30;
+    btn.addEventListener('click', () => {
+    const pressed = btn.getAttribute('aria-pressed') === 'true';
+    btn.setAttribute('aria-pressed', String(!pressed));
+    iconWrap.innerHTML = pressed ? eyeSlashSVG : eyeSVG;
+    btn.querySelector('.fw-medium').textContent = pressed ? 'Hide countdown' : 'Show countdown';
 
-        const days = Math.floor(diff / (1000*60*60*24));
-        diff -= days * 1000*60*60*24;
+    const countdown = document.querySelectorAll('.countdown-container');
+    countdown.forEach(e => {
+    e.classList.toggle('d-none');
+    });
+    });
 
-        const hours = Math.floor(diff / (1000*60*60));
-        diff -= hours * 1000*60*60;
-
-        const minutes = Math.floor(diff / (1000*60));
-        diff -= minutes * 1000*60;
-
-        const seconds = Math.floor(diff / 1000);
-
-        countdownEl.innerHTML = `
-            <div class="countdown-block"><span>${months}</span><div class="countdown-label">Monate</div></div>
-            <div class="countdown-block"><span>${days}</span><div class="countdown-label">Tage</div></div>
-            <div class="countdown-block"><span>${pad(hours)}</span><div class="countdown-label">Stunden</div></div>
-            <div class="countdown-block"><span>${pad(minutes)}</span><div class="countdown-label">Minuten</div></div>
-            <div class="countdown-block"><span>${pad(seconds)}</span><div class="countdown-label">Sekunden</div></div>
-        `;
-    }
-
+    // Set initial icon to eye-slash (meaning: click -> hide)
+    iconWrap.innerHTML = eyeSlashSVG;
+    })();
 </script>
 
 @if (name != null)
 {
-    <h2>Hallo, @name 🤗</h2>
+    <h2 class="mb-5">Hallo, @name 👋</h2>
 }
 
-<h1 class="text-center display-3 fw-bold" style="color: orangered; text-decoration: overline; text-decoration-color: aqua">MOTTO RANKING</h1>
-<button class="btn btn-success" onclick="document.location = '/mottoranking'">Zu den Vorschlägen</button>
+<div class="ranking d-flex justify-content-center align-items-center flex-column">
+    <h3 class="text-center display-5 fw-bold mb-4" style="color: deeppink; text-decoration: underline">MOTTO RANKING:</h3>
+    @if (topSuggestion != null) {
+        <div class="rank-card">
+            <div class="rank-number">#1</div>
+            <div class="suggestion-title">@topSuggestion.Title</div>
+            <div class="suggestion-author">Idee von: <b>@topSuggestion.Author</b></div>
+            <div class="votes">
+                <span>👍 @topSuggestion.UpVotes.Count()</span> |
+                <span>👎 @topSuggestion.DownVotes.Count()</span>
+            </div>
+        </div>
+    }
+    <button class="btn btn-success" @onclick='() => Navigation.NavigateTo("/mottoranking")'>Zu den Vorschlägen</button>
+</div>
+
+
+
 
 
 @code {
@@ -112,6 +104,15 @@
     private string? tutor;
     private string? nickname;
     private int studentId;
+    SuggestionVm? topSuggestion;
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JS.InvokeVoidAsync("startCountdown", "countdown", "2027-06-01T21:13:00");
+        }
+    }
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -125,5 +126,21 @@
             tutor = user.FindFirst("Tutor")?.Value;
             nickname = user.FindFirst("Nickname")?.Value;
         }
+
+        topSuggestion = Db.MottoSuggestions
+            .Select(s => new SuggestionVm
+                {
+                    Id = s.Id,
+                    Title = s.Title,
+                    Author = s.Student.FullName,
+                    CreatedAt = s.CreatedAt,
+                    UpVotes = s.Votes.Where(v => v.Value == 1),
+                    DownVotes = s.Votes.Where(v => v.Value == -1),
+                    UserVote = 0
+                })
+            .AsEnumerable()
+            .OrderByDescending(s => s.UpVotes.Count() - s.DownVotes.Count())
+            .FirstOrDefault();
+
     }
 }

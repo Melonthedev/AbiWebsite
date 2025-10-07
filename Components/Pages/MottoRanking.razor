@@ -1,135 +1,186 @@
 ﻿@page "/mottoranking"
+@rendermode InteractiveServer
+<PageTitle>Motto Ranking</PageTitle>
+
 @using AbiWebsite.Data
 @using AbiWebsite.Models
 @using System.Diagnostics
+@using AbiWebsite.Models.ViewModels
+@using Microsoft.AspNetCore.Components.Authorization
+
 @inject AbiDbContext Db
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthenticationStateProvider
 
 <h3>Abi Motto Ranking</h3>
 
-<!--<table class="table-dark table">
-    <thead>
-        <tr>
-            <th>Platz</th>
-            <th>Motto</th>
-            <th>Score</th>
-            <th>Deine Stimme</th>
-        </tr>
-    </thead>
-    <tbody>-->
-        @foreach (var suggestion in rankedSuggestions)
-        {
-            <!--<tr>
-                <td>@(++rank)</td>
-                <td>@suggestion.Title</td>
-                <td>
-                    👍 @suggestion.UpVotes | 👎 @suggestion.DownVotes |
-                    <b>Score: @suggestion.Score</b>
-                </td>
-                <td>
-                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
-                    @onclick="() => Vote(suggestion.Id, 1)">
-                        👍
-                    </button>
-                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, -1))"
-                    @onclick="() => Vote(suggestion.Id, -1)">
-                        👎
-                    </button>
-                </td>
-    </tr>-->
-        }
-<!--</tbody>
-</table>-->
+
+<ul class="nav nav-tabs bg-dark" data-bs-theme="dark">
+    <li class="nav-item" style="cursor: pointer">
+        <a class="nav-link @(activeTab == "best" ? "active" : "")"
+        @onclick='() => SelectTab("best")'>Best</a>
+    </li>
+    <li class="nav-item" style="cursor: pointer">
+        <a class="nav-link @(activeTab == "hot" ? "active" : "")"
+        @onclick='() => SelectTab("hot")'>Hot</a>
+    </li>
+</ul>
 
 
-<div class="ranking-container">
-    @if (rankedSuggestions?.Any() == true)
-    {
-        int rank = 0;
-        @foreach (var suggestion in rankedSuggestions)
+<div class="tab-content mt-3" style="margin-bottom: 100px">
+    <div class="tab-pane fade @(activeTab == "best" ? "show active" : "")">
+        @foreach (var suggestion in bestSuggestions)
         {
-            <div class="rank-card">
-                <div class="rank-number">#@(++rank)</div>
-                <div class="suggestion-title">@suggestion.Title</div>
-                <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
-                <div class="votes">
-                    <span>👍 @suggestion.UpVotes</span> |
-                    <span>👎 @suggestion.DownVotes</span>
-                </div>
-                <div class="vote-buttons">
-                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
-                            @onclick="() => Vote(suggestion.Id, 1)">
-                        👍
-                    </button>
-                    <button class="btn btn-sm @(GetVoteClass(suggestion.Id, -1))"
-                            @onclick="() => Vote(suggestion.Id, -1)">
-                        👎
-                    </button>
-                </div>
-            </div>
+            @RenderSuggestionCard(suggestion)
         }
-    }
-    else
-    {
-        <p>Keine Vorschläge vorhanden.</p>
-    }
+    </div>
+    <div class="tab-pane fade @(activeTab == "hot" ? "show active" : "")">
+        @foreach (var suggestion in hotSuggestions)
+        {
+            @RenderSuggestionCard(suggestion)
+        }
+    </div>
 </div>
+
+@code {
+    private string activeTab = "best";
+
+    private void SelectTab(string tab)
+    {
+        activeTab = tab;
+    }
+}
+
 
 
 <button class="btn btn-success floating-btn" onclick="document.location = '/submitmotto'">
     <i class="bi bi-plus"></i> Vorschlag Einreichen
 </button>
 
+
+@code {
+    RenderFragment<SuggestionVm> RenderSuggestionCard => suggestion => __builder =>
+    {
+        <div class="rank-card">
+            <div class="rank-number">#@(bestSuggestions.IndexOf(suggestion) + 1)</div>
+            <div class="suggestion-title">@suggestion.Title</div>
+            <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
+            <div class="votes">
+                <span>👍 @suggestion.UpVotes.Count()</span> |
+                <span>👎 @suggestion.DownVotes.Count()</span>
+            </div>
+            <div class="vote-buttons">
+                <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
+                @onclick="() => Vote(suggestion.Id, 1)">
+                    👍
+                </button>
+                <button class="btn btn-sm @(GetVoteClass(suggestion.Id, -1))"
+                @onclick="() => Vote(suggestion.Id, -1)">
+                    👎
+                </button>
+            </div>
+        </div>
+        ;
+    };
+}
+
+
 @code {
 
-    private List<SuggestionVm> rankedSuggestions = new();
-    private int currentStudentId = 1; // TODO: ersetzen durch den eingeloggten Student
+    private int? currentStudentId = null;
+
+    private List<SuggestionVm> bestSuggestions = new();
+    private List<SuggestionVm> hotSuggestions = new();
 
     private int rank = 0;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity != null && user.Identity.IsAuthenticated)
+        {
+            var idClaim = user.FindFirst("StudentId");
+            if (idClaim != null) {
+                currentStudentId = int.Parse(idClaim.Value);
+            }
+        }
+
         LoadSuggestions();
     }
 
     private void LoadSuggestions()
     {
-        rankedSuggestions = Db.MottoSuggestions
+        var currentUserVote = 0;
+        if (currentStudentId != null)
+        {
+            var vote = Db.Votes.FirstOrDefault(v => v.StudentId == currentStudentId);
+            if (vote != null)
+            {
+                currentUserVote = vote.Value;
+            }
+        }
+        var all = Db.MottoSuggestions
             .Select(s => new SuggestionVm
                 {
                     Id = s.Id,
                     Title = s.Title,
                     Author = s.Student.FullName,
-                    UpVotes = s.Votes.Count(v => v.Value == 1),
-                    DownVotes = s.Votes.Count(v => v.Value == -1),
-                    UserVote = s.Votes.FirstOrDefault(v => v.StudentId == currentStudentId) == null ? 0 : s.Votes.First(v => v.StudentId == currentStudentId).Value
+                    CreatedAt = s.CreatedAt,
+                    UpVotes = s.Votes.Where(v => v.Value == 1),
+                    DownVotes = s.Votes.Where(v => v.Value == -1),
+                    UserVote = currentUserVote
                 })
             .AsEnumerable()
-            .Select(s => { s.Score = s.UpVotes - s.DownVotes; return s; })
-            .OrderByDescending(s => s.Score)
             .ToList();
+
+        foreach (var s in all)
+            s.Score = s.UpVotes.Count() - s.DownVotes.Count();
+
+        bestSuggestions = all.OrderByDescending(s => s.Score).ToList();
+        hotSuggestions = all.OrderByDescending(s => GetHotScore(s)).ToList();
     }
+
 
     private void Vote(int suggestionId, int value)
     {
-        var vote = Db.Votes.FirstOrDefault(v => v.StudentId == currentStudentId && v.MottoSuggestionId == suggestionId);
+        if (currentStudentId == null)
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        var vote = Db.Votes
+            .FirstOrDefault(v => v.StudentId == currentStudentId && v.MottoSuggestionId == suggestionId);
 
         if (vote == null)
         {
             Db.Votes.Add(new Vote
                 {
-                    StudentId = currentStudentId,
+                    StudentId = currentStudentId.Value,
                     MottoSuggestionId = suggestionId,
                     Value = value
                 });
         }
         else
         {
-            vote.Value = value; // überschreibt alte Stimme
+            if (vote.Value == value) {
+                vote.Value = 0;
+            } else {
+                vote.Value = value; // überschreibt alte Stimme
+            }
         }
 
         Db.SaveChanges();
         LoadSuggestions();
+    }
+
+
+    private double GetHotScore(SuggestionVm s)
+    {
+        var seconds = (DateTime.UtcNow - s.CreatedAt).TotalSeconds;
+        return (s.UpVotes.Count() - s.DownVotes.Count()) / Math.Pow((seconds / 3600) + 2, 1.5);
     }
 
     private string GetVoteClass(int suggestionId, int value)
@@ -140,16 +191,5 @@
             return "btn-primary"; // markiert aktuell gewählten Button
         }
         return "btn-outline-secondary";
-    }
-
-    private class SuggestionVm
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-        public string Author { get; set; } = string.Empty;
-        public int UpVotes { get; set; }
-        public int DownVotes { get; set; }
-        public int Score { get; set; }
-        public int UserVote { get; set; }
     }
 }
