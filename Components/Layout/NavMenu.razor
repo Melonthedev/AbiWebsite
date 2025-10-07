@@ -1,4 +1,10 @@
-﻿<div class="ps-3 navbar navbar-dark">
+﻿@using AbiWebsite.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthProvider
+@inject AbiDbContext Db
+
+
+<div class="ps-3 navbar navbar-dark">
     <div class="container-fluid">
         <a class="navbar-brand" href="">Abi Winfriedschule 👍</a>
     </div>
@@ -25,12 +31,41 @@
                 <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
             </NavLink>
         </div>
+        @if (isAdmin)
+        {
+            <div class="nav-item px-3">
+                <NavLink class="nav-link" href="admin">
+                    <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Admin Dashboard
+                </NavLink>
+            </div>
+        }
 
-        <!--<div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
-            </NavLink>
-        </div>-->
     </nav>
 </div>
 
+@code {
+    private string? name;
+    private string? tutor;
+    private string? nickname;
+    private int studentId;
+    private bool isAdmin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthProvider.GetAuthenticationStateAsync();
+        var user = state.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var idClaim = user.FindFirst("StudentId")?.Value;
+            int? userID = idClaim != null ? int.Parse(idClaim) : null;
+            var student = await Db.Students.FindAsync(userID);
+            if (student != null)
+            {
+                isAdmin = student.IsAdmin;
+            }
+        }
+
+
+    }
+}
