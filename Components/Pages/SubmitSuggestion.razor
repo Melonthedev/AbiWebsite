@@ -7,7 +7,9 @@
 @using AbiWebsite.Models
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
 @using Microsoft.AspNetCore.Mvc
+@using Microsoft.EntityFrameworkCore
 
 @inject AbiDbContext Db
 @inject AuthenticationStateProvider AuthenticationStateProvider
@@ -57,6 +59,7 @@
     }
 
 
+
     private async Task HandleValidSubmit()
     {
         if (string.IsNullOrWhiteSpace(newSuggestion.Title) ||
@@ -67,8 +70,9 @@
             return;
         }
 
-        if (currentStudentId == null) {
-            Navigation.NavigateTo("/login");
+        if (currentStudentId == null || !(await Db.Students.AnyAsync(s => s.Id == currentStudentId.Value)))
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
             return;
         }
 

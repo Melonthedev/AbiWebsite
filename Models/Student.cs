@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations;
+using System.Xml.Linq;
 
 namespace AbiWebsite.Models {
     public class Student {
@@ -12,12 +13,16 @@ namespace AbiWebsite.Models {
         public string Tutor { get; set; } 
         public string? Traits { get; set; } // Eigenschaften (frei oder kommagetrennt)
 
-        // Login / Auth (optional)
-        public string? Email { get; set; }
-        public string? PasswordHash { get; set; } // falls du keine externe Auth nutzt
+        public bool IsApproved { get; set; } = false; // Wurde der Schüler von einem Admin freigeschaltet?
+
+        public bool IsAdmin { get; set; } = false; 
 
         // Navigation
         public ICollection<MottoSuggestion> Suggestions { get; set; } = new List<MottoSuggestion>();
         public ICollection<Vote> Votes { get; set; } = new List<Vote>();
+
+        public string GetNickNameOrName(bool isAdmin = false) {
+            return (Nickname == null || Nickname == "" || isAdmin) ? FullName : Nickname;
+        }
     }
 }

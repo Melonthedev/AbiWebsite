@@ -76,7 +76,7 @@
 
 @if (name != null)
 {
-    <h2 class="mb-5">Hallo, @name 👋</h2>
+    <h2 class="mb-5">Hallo, @((nickname == null || nickname == "") ? name : nickname ) 👋</h2>
 }
 
 <div class="ranking d-flex justify-content-center align-items-center flex-column">

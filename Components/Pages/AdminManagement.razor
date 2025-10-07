@@ -1,0 +1,151 @@
+﻿@page "/manageadmins"
+@rendermode InteractiveServer
+<PageTitle>Admin Management</PageTitle>
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using AbiWebsite.Models.ViewModels
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AbiDbContext Db
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3>Admin Dashboard</h3>
+
+@if (!isAdminChecked)
+{
+    <div>Lade...</div>
+}
+else if (!isAdmin)
+{
+    <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
+}
+else
+{
+    <div class="ranking-container">
+        <h4>Admin-Verwaltung</h4>
+        <div class="row">
+            <div class="col">
+                <h5>Admins</h5>
+                <table class="table table-dark table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tutor</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var admin in adminUsers)
+                        {
+                            <tr>
+                                <td>@admin.FullName</td>
+                                <td>@admin.Tutor</td>
+                                <td>
+                                    @if (admin.Id != currentUserId)
+                                    {
+                                        <button class="btn btn-danger btn-sm" @onclick="() => RemoveAdmin(admin.Id)">Admin entfernen</button>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Du</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="col">
+                <h5>Genehmigte Nicht-Admins</h5>
+                <table class="table table-dark table-striped">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tutor</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in approvedNonAdmins)
+                        {
+                            <tr>
+                                <td>@user.FullName</td>
+                                <td>@user.Tutor</td>
+                                <td>
+                                    <button class="btn btn-success btn-sm" @onclick="() => AddAdmin(user.Id)">Als Admin hinzufügen</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool isAdminChecked = false;
+    private bool isAdmin = true;
+    private int currentUserId;
+
+    private List<Student> adminUsers = new();
+    private List<Student> approvedNonAdmins = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Authentifizierten User laden
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var idClaim = user.FindFirst("StudentId");
+        if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+        {
+            currentUserId = id;
+            var dbUser = await Db.Students.FindAsync(id);
+            isAdmin = dbUser != null && (dbUser.IsAdmin || dbUser.FullName == "Marlon Jestädt");
+        }
+
+        isAdminChecked = true;
+
+        if (!isAdmin)
+        {
+            await InvokeAsync(() => Navigation.NavigateTo("/login", true));
+            return;
+        }
+
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        adminUsers = Db.Students.Where(s => s.IsAdmin).ToList();
+        approvedNonAdmins = Db.Students.Where(s => !s.IsAdmin).ToList();
+    }
+
+    private void AddAdmin(int studentId)
+    {
+        var student = Db.Students.Find(studentId);
+        if (student != null)
+        {
+            student.IsAdmin = true;
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void RemoveAdmin(int studentId)
+    {
+        var student = Db.Students.Find(studentId);
+        if (student != null)
+        {
+            student.IsAdmin = false;
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+}

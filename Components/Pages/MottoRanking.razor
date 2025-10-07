@@ -68,17 +68,28 @@
         var isShowing = showVotes.TryGetValue(suggestion.Id, out var val) && val;
 
         <div class="rank-card">
-            <div class="rank-number">#@(bestSuggestions.IndexOf(suggestion) + 1)</div>
+            <div class="d-inline-flex justify-content-between">
+                <div class="rank-number">#@(bestSuggestions.IndexOf(suggestion) + 1)</div>
+
+                @if (isAdmin)
+                {
+                    <button class="btn btn-danger btn-sm" style="max-width: 200px" @onclick="() => DeleteMotto(suggestion.Id)">
+                        <i class="bi bi-trash"></i> Löschen
+                    </button>
+                }
+            </div>
+            
+
             <div class="suggestion-title">@suggestion.Title</div>
             <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
             <div class="votes">
                 <span>👍 @suggestion.UpVotes.Count()</span> |
                 <span>👎 @suggestion.DownVotes.Count()</span>
-                
+
             </div>
             <div class="vote-display d-flex justify-content-center align-items-center flex-column">
                 <button id="toggleCountdownBtn" class="btn text-white btn-out d-inline-flex align-items-center gap-2"
-                        aria-pressed="false" title="Hide countdown" @onclick="() => ToggleShowVotes(suggestion.Id)">
+                aria-pressed="false" title="Hide countdown" @onclick="() => ToggleShowVotes(suggestion.Id)">
                     <i class="bi bi-chevron-down"></i> Mehr Details
                 </button>
                 @if (isShowing)
@@ -89,7 +100,7 @@
                             <ul>
                                 @foreach (var vote in suggestion.UpVotes)
                                 {
-                                    <li>@vote.Student.FullName</li>
+                                    <li>@vote.Student.GetNickNameOrName(isAdmin)</li>
                                 }
                             </ul>
                         </div>
@@ -98,7 +109,7 @@
                             <ul>
                                 @foreach (var vote in suggestion.DownVotes)
                                 {
-                                    <li>@vote.Student.FullName</li>
+                                    <li>@vote.Student.GetNickNameOrName(isAdmin)</li>
                                 }
                             </ul>
                         </div>
@@ -107,7 +118,7 @@
 
                 <p class="mt-3 mb-0">Deine Stimme:</p>
             </div>
-            
+
             <div class="vote-buttons">
                 <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
                 @onclick="() => Vote(suggestion.Id, 1)">
@@ -137,6 +148,7 @@
 @code {
 
     private int? currentStudentId = null;
+    bool isAdmin = false;
 
     private List<SuggestionVm> bestSuggestions = new();
     private List<SuggestionVm> hotSuggestions = new();
@@ -169,6 +181,10 @@
             {
                 currentUserVote = vote.Value;
             }
+            var student = Db.Students.Find(currentStudentId);
+            if (student != null) {
+                isAdmin = student.IsAdmin;
+            }
         }
         var all = Db.MottoSuggestions
             .Include(s => s.Votes)
@@ -177,7 +193,7 @@
                 {
                     Id = s.Id,
                     Title = s.Title,
-                    Author = s.Student.FullName,
+                    Author = s.Student.GetNickNameOrName(isAdmin),
                     CreatedAt = s.CreatedAt,
                     UpVotes = s.Votes.Where(v => v.Value == 1),
                     DownVotes = s.Votes.Where(v => v.Value == -1),
@@ -194,9 +210,9 @@
     }
 
 
-    private void Vote(int suggestionId, int value)
+    private async void Vote(int suggestionId, int value)
     {
-        if (currentStudentId == null)
+        if (currentStudentId == null || !(await Db.Students.AnyAsync(s => s.Id == currentStudentId.Value)))
         {
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
@@ -223,7 +239,7 @@
             }
         }
 
-        Db.SaveChanges();
+        await Db.SaveChangesAsync();
         LoadSuggestions();
     }
 
@@ -243,4 +259,17 @@
         }
         return "btn-outline-secondary";
     }
+
+    private void DeleteMotto(int suggestionId)
+    {
+        var suggestion = Db.MottoSuggestions.Find(suggestionId);
+        if (suggestion != null)
+        {
+            Db.MottoSuggestions.Remove(suggestion);
+            Db.SaveChanges();
+            LoadSuggestions();
+            StateHasChanged();
+        }
+    }
+
 }

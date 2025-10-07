@@ -1,0 +1,218 @@
+﻿@page "/admin"
+@rendermode InteractiveServer
+<PageTitle>Admin Dashboard</PageTitle>
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using AbiWebsite.Models.ViewModels
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AbiDbContext Db
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3>Admin Dashboard</h3>
+
+@if (!isAdminChecked)
+{
+    <div>Lade...</div>
+}
+else if (!isAdmin)
+{
+    <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
+}
+else
+{
+
+    <div class="ranking-container">
+        <h4>Student Approval</h4>
+        @if (pendingStudents.Count == 0)
+        {
+            <div>Keine ausstehenden Studenten.</div>
+        }
+        else
+        {
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tutor</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var student in pendingStudents)
+                    {
+                        <tr>
+                            <td>@student.FullName</td>
+                            <td>@student.Tutor</td>
+                            <td>
+                                <button class="btn btn-success btn-sm" @onclick="() => ApproveStudent(student.Id)">Genehmigen</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => RejectStudent(student.Id)">Ablehnen</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+
+    <div class="ranking-container mt-4">
+        <h4>Motto Suggestions Approval</h4>
+        @if (pendingSuggestions.Count == 0)
+        {
+            <div>Keine ausstehenden Vorschläge.</div>
+        }
+        else
+        {
+            <div class="mb-2">
+                <button class="btn btn-success btn-sm" @onclick="ApproveAllSuggestions">Alle genehmigen</button>
+                <button class="btn btn-danger btn-sm" @onclick="DeleteAllSuggestions">Alle löschen</button>
+            </div>
+            <table class="table table-dark table-striped">
+                <thead>
+                    <tr>
+                        <th>Motto</th>
+                        <th>Von</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var suggestion in pendingSuggestions)
+                    {
+                        <tr>
+                            <td>@suggestion.Title</td>
+                            <td>@suggestion.Student.FullName</td>
+                            <td>
+                                <button class="btn btn-success btn-sm" @onclick="() => ApproveSuggestion(suggestion.Id)">Genehmigen</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => DeleteSuggestion(suggestion.Id)">Löschen</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+    </div>
+}
+
+@code {
+    private bool isAdminChecked = false;
+    private bool isAdmin = true;
+    private int currentUserId;
+
+    private List<Student> pendingStudents = new();
+    private List<MottoSuggestion> pendingSuggestions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Authentifizierten User laden
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var idClaim = user.FindFirst("StudentId");
+        if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+        {
+            currentUserId = id;
+            var dbUser = await Db.Students.FindAsync(id);
+            isAdmin = dbUser != null && dbUser.IsAdmin;
+        }
+
+        isAdminChecked = true;
+
+        if (!isAdmin)
+        {
+            await InvokeAsync(() => Navigation.NavigateTo("/login", true));
+            return;
+        }
+
+        LoadData();
+    }
+
+    private void LoadData()
+    {
+        pendingStudents = Db.Students.Where(s => !s.IsApproved).ToList();
+        pendingSuggestions = Db.MottoSuggestions
+            .Where(s => !s.IsApproved)
+            .Include(s => s.Student)
+            .ToList();
+    }
+
+    private void ApproveStudent(int studentId)
+    {
+        var student = Db.Students.Find(studentId);
+        if (student != null)
+        {
+            student.IsApproved = true;
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void RejectStudent(int studentId)
+    {
+        var student = Db.Students
+            .Include(s => s.Suggestions)
+            .FirstOrDefault(s => s.Id == studentId);
+
+        if (student != null)
+        {
+            // Alle Suggestions des Studenten löschen
+            var suggestions = Db.MottoSuggestions.Where(ms => ms.StudentId == studentId).ToList();
+            Db.MottoSuggestions.RemoveRange(suggestions);
+
+            // Student löschen
+            Db.Students.Remove(student);
+
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void ApproveSuggestion(int suggestionId)
+    {
+        var suggestion = Db.MottoSuggestions.Find(suggestionId);
+        if (suggestion != null)
+        {
+            suggestion.IsApproved = true;
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteSuggestion(int suggestionId)
+    {
+        var suggestion = Db.MottoSuggestions.Find(suggestionId);
+        if (suggestion != null)
+        {
+            Db.MottoSuggestions.Remove(suggestion);
+            Db.SaveChanges();
+            LoadData();
+            StateHasChanged();
+        }
+    }
+
+    private void ApproveAllSuggestions()
+    {
+        var suggestions = Db.MottoSuggestions.Where(s => !s.IsApproved).ToList();
+        foreach (var s in suggestions)
+        {
+            s.IsApproved = true;
+        }
+        Db.SaveChanges();
+        LoadData();
+        StateHasChanged();
+    }
+
+    private void DeleteAllSuggestions()
+    {
+        var suggestions = Db.MottoSuggestions.Where(s => !s.IsApproved).ToList();
+        Db.MottoSuggestions.RemoveRange(suggestions);
+        Db.SaveChanges();
+        LoadData();
+        StateHasChanged();
+    }
+}
