@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 <PageTitle>Admin Management</PageTitle>
 
+@using AbiWebsite.Components.Shared
 @using AbiWebsite.Data
 @using AbiWebsite.Models
 @using AbiWebsite.Models.ViewModels
@@ -11,19 +12,11 @@
 @inject AbiDbContext Db
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
 <h3>Admin Dashboard</h3>
 
-@if (!isAdminChecked)
-{
-    <div>Lade...</div>
-}
-else if (!isAdmin)
-{
-    <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
-}
-else
-{
+<AdminGate>
     <div class="ranking-container">
         <h4>Admin-Verwaltung</h4>
         <div class="row">
@@ -50,7 +43,7 @@ else
                                     }
                                     else
                                     {
-                                        <span class="text-muted">Du</span>
+                                        <span class="text-white">Du</span>
                                     }
                                 </td>
                             </tr>
@@ -59,7 +52,7 @@ else
                 </table>
             </div>
             <div class="col">
-                <h5>Genehmigte Nicht-Admins</h5>
+                <h5>Nicht-Admins</h5>
                 <table class="table table-dark table-striped">
                     <thead>
                         <tr>
@@ -84,68 +77,46 @@ else
             </div>
         </div>
     </div>
-}
 
-@code {
-    private bool isAdminChecked = false;
-    private bool isAdmin = true;
-    private int currentUserId;
+    @code {
+        private int currentUserId;
 
-    private List<Student> adminUsers = new();
-    private List<Student> approvedNonAdmins = new();
+        private List<Student> adminUsers = new();
+        private List<Student> approvedNonAdmins = new();
 
-    protected override async Task OnInitializedAsync()
-    {
-        // Authentifizierten User laden
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        var idClaim = user.FindFirst("StudentId");
-        if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+        protected override async Task OnInitializedAsync()
         {
-            currentUserId = id;
-            var dbUser = await Db.Students.FindAsync(id);
-            isAdmin = dbUser != null && (dbUser.IsAdmin || dbUser.FullName == "Marlon Jestädt");
+            await LoadData();
         }
 
-        isAdminChecked = true;
-
-        if (!isAdmin)
+        private async Task LoadData()
         {
-            await InvokeAsync(() => Navigation.NavigateTo("/login", true));
-            return;
+            adminUsers = await Db.Students.Where(s => s.IsAdmin).ToListAsync();
+            approvedNonAdmins = await Db.Students.Where(s => !s.IsAdmin).ToListAsync();
         }
 
-        LoadData();
-    }
-
-    private void LoadData()
-    {
-        adminUsers = Db.Students.Where(s => s.IsAdmin).ToList();
-        approvedNonAdmins = Db.Students.Where(s => !s.IsAdmin).ToList();
-    }
-
-    private void AddAdmin(int studentId)
-    {
-        var student = Db.Students.Find(studentId);
-        if (student != null)
+        private void AddAdmin(int studentId)
         {
-            student.IsAdmin = true;
-            Db.SaveChanges();
-            LoadData();
-            StateHasChanged();
+            var student = Db.Students.Find(studentId);
+            if (student != null)
+            {
+                student.IsAdmin = true;
+                Db.SaveChanges();
+                LoadData();
+                StateHasChanged();
+            }
+        }
+
+        private void RemoveAdmin(int studentId)
+        {
+            var student = Db.Students.Find(studentId);
+            if (student != null)
+            {
+                student.IsAdmin = false;
+                Db.SaveChanges();
+                LoadData();
+                StateHasChanged();
+            }
         }
     }
-
-    private void RemoveAdmin(int studentId)
-    {
-        var student = Db.Students.Find(studentId);
-        if (student != null)
-        {
-            student.IsAdmin = false;
-            Db.SaveChanges();
-            LoadData();
-            StateHasChanged();
-        }
-    }
-}
+</AdminGate>

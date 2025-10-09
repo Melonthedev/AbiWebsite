@@ -1,0 +1,85 @@
+﻿@using AbiWebsite.Data
+@using Microsoft.AspNetCore.Components.Authorization
+@inject AuthenticationStateProvider AuthProvider
+@inject AbiDbContext Db
+@inject NavigationManager Navigation
+@inject IConfiguration Configuration
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool isAdminChecked = false;
+    private bool isPasswordChecked = false;
+    private bool isAdmin = false;
+    private int currentUserId;
+    private string inputPassword = "";
+    private string passwordError = "";
+
+    private string? adminPanelPassword => Configuration["AdminPanelPassword"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var idClaim = user.FindFirst("StudentId");
+        if (idClaim != null && int.TryParse(idClaim.Value, out var id))
+        {
+            currentUserId = id;
+            var dbUser = await Db.Students.FindAsync(id);
+            isAdmin = dbUser != null && dbUser.IsAdmin;
+        }
+
+        isAdminChecked = true;
+
+        if (!isAdmin)
+        {
+            await InvokeAsync(() => Navigation.NavigateTo("/login", true));
+            return;
+        }
+    }
+
+    private void CheckPassword()
+    {
+        if (inputPassword == adminPanelPassword)
+        {
+            isPasswordChecked = true;
+            passwordError = "";
+            StateHasChanged();
+        }
+        else
+        {
+            passwordError = "Falsches Passwort!";
+        }
+    }
+}
+
+@if (!isAdminChecked)
+{
+    <div>Lade...</div>
+}
+else if (!isAdmin)
+{
+    <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
+}
+else if (!isPasswordChecked)
+{
+    <div class="ranking-container">
+        <h4>Admin-Passwort erforderlich</h4>
+        <EditForm Model="@this" OnValidSubmit="CheckPassword">
+            <div class="mb-3">
+                <label class="form-label">Admin-Passwort</label>
+                <InputText type="password" class="form-control bg-dark text-white" @bind-Value="inputPassword" />
+            </div>
+            @if (!string.IsNullOrEmpty(passwordError))
+            {
+                <div class="alert alert-danger">@passwordError</div>
+            }
+            <button type="submit" class="btn btn-primary">Bestätigen</button>
+        </EditForm>
+    </div>
+}
+else
+{
+    @ChildContent
+}

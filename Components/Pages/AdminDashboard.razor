@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 <PageTitle>Admin Dashboard</PageTitle>
 
+@using AbiWebsite.Components.Shared
 @using AbiWebsite.Data
 @using AbiWebsite.Models
 @using AbiWebsite.Models.ViewModels
@@ -11,20 +12,11 @@
 @inject AbiDbContext Db
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject IConfiguration Configuration
 
 <h3>Admin Dashboard</h3>
 
-@if (!isAdminChecked)
-{
-    <div>Lade...</div>
-}
-else if (!isAdmin)
-{
-    <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
-}
-else
-{
-
+<AdminGate>
     <div class="ranking-container">
         <h4>Student Approval</h4>
         @if (pendingStudents.Count == 0)
@@ -94,11 +86,8 @@ else
             </table>
         }
     </div>
-}
 
 @code {
-    private bool isAdminChecked = false;
-    private bool isAdmin = true;
     private int currentUserId;
 
     private List<Student> pendingStudents = new();
@@ -106,26 +95,6 @@ else
 
     protected override async Task OnInitializedAsync()
     {
-        // Authentifizierten User laden
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-
-        var idClaim = user.FindFirst("StudentId");
-        if (idClaim != null && int.TryParse(idClaim.Value, out var id))
-        {
-            currentUserId = id;
-            var dbUser = await Db.Students.FindAsync(id);
-            isAdmin = dbUser != null && dbUser.IsAdmin;
-        }
-
-        isAdminChecked = true;
-
-        if (!isAdmin)
-        {
-            await InvokeAsync(() => Navigation.NavigateTo("/login", true));
-            return;
-        }
-
         LoadData();
     }
 
@@ -216,3 +185,4 @@ else
         StateHasChanged();
     }
 }
+</AdminGate>

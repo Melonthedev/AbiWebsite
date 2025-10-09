@@ -63,9 +63,9 @@
     private async Task HandleValidSubmit()
     {
         if (string.IsNullOrWhiteSpace(newSuggestion.Title) ||
-            newSuggestion.Title.Length < 5 || newSuggestion.Title.Length > 50)
+            newSuggestion.Title.Length < 5 || newSuggestion.Title.Length > 70)
         {
-            Message = "❌ Dein Motto muss zwischen 5 und 50 Zeichen lang sein.";
+            Message = "❌ Dein Motto muss zwischen 5 und 70 Zeichen lang sein.";
             MessageClass = "alert-danger";
             return;
         }
@@ -77,6 +77,7 @@
         }
 
         newSuggestion.StudentId = currentStudentId.Value;
+        newSuggestion.CreatedAt = DateTime.UtcNow;
         Db.MottoSuggestions.Add(newSuggestion);
         await Db.SaveChangesAsync();
 

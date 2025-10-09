@@ -22,8 +22,12 @@
         @onclick='() => SelectTab("best")'>Best</a>
     </li>
     <li class="nav-item" style="cursor: pointer">
+        <a class="nav-link @(activeTab == "new" ? "active" : "")"
+        @onclick='() => SelectTab("new")'>Neu</a>
+    </li>
+    <li class="nav-item" style="cursor: pointer">
         <a class="nav-link @(activeTab == "hot" ? "active" : "")"
-        @onclick='() => SelectTab("hot")'>Hot</a>
+           @onclick='() => SelectTab("hot")'>Hot ♨️</a>
     </li>
 </ul>
 
@@ -35,9 +39,14 @@
             @RenderSuggestionCard(suggestion)
         }
     </div>
-    <div class="tab-pane fade @(activeTab == "hot" ? "show active" : "")">
-        @foreach (var suggestion in hotSuggestions)
+    <div class="tab-pane fade @(activeTab == "new" ? "show active" : "")">
+        @foreach (var suggestion in bestSuggestions.OrderByDescending(s => s.CreatedAt))
         {
+            @RenderSuggestionCard(suggestion)
+        }
+    </div>
+    <div class="tab-pane fade @(activeTab == "hot" ? "show active" : "")">
+        @foreach (var suggestion in hotSuggestions) {
             @RenderSuggestionCard(suggestion)
         }
     </div>
@@ -82,6 +91,11 @@
 
             <div class="suggestion-title">@suggestion.Title</div>
             <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
+            <div class="suggestion-timestamp suggestion-author">
+                Eingereicht am: <b>@suggestion.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</b>
+            </div>
+            
+
             <div class="votes">
                 <span>👍 @suggestion.UpVotes.Count()</span> |
                 <span>👎 @suggestion.DownVotes.Count()</span>
@@ -214,7 +228,7 @@
     {
         if (currentStudentId == null || !(await Db.Students.AnyAsync(s => s.Id == currentStudentId.Value)))
         {
-            Navigation.NavigateTo("/login", forceLoad: true);
+            Navigation.NavigateTo("/login?ReturnUrl=%2Fmottoranking", forceLoad: true);
             return;
         }
 
@@ -244,10 +258,15 @@
     }
 
 
-    private double GetHotScore(SuggestionVm s)
-    {
-        var seconds = (DateTime.UtcNow - s.CreatedAt).TotalSeconds;
-        return (s.UpVotes.Count() - s.DownVotes.Count()) / Math.Pow((seconds / 3600) + 2, 1.5);
+    private double GetHotScore(SuggestionVm s) {
+        var hours = (DateTime.UtcNow - s.CreatedAt).TotalHours;
+        double baseScore = s.UpVotes.Count() - s.DownVotes.Count();
+        double timeFactor = Math.Pow(hours + 0.5, 1.1); // Weniger Offset, geringere Potenz
+
+        // Bonus für sehr neue Vorschläge (z.B. < 1h)
+        double newBonus = hours < 1 ? 5 : 0;
+
+        return (baseScore + newBonus) / timeFactor;
     }
 
     private string GetVoteClass(int suggestionId, int value)

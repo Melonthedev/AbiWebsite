@@ -1,0 +1,130 @@
+﻿@page "/students"
+@rendermode InteractiveServer
+<PageTitle>Schülerdatenbank</PageTitle>
+
+@using AbiWebsite.Components.Shared
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.EntityFrameworkCore
+
+@inject AbiDbContext Db
+
+<h3>Schülerdatenbank</h3>
+
+<AdminGate>
+    <div class="mb-3">
+        <input class="form-control bg-dark text-white" placeholder="Suche nach Name oder Nickname..." @bind="searchTerm" />
+    </div>
+
+    <div class="mb-3">
+        <label>Sortieren nach:</label>
+        <select class="form-select bg-dark text-white w-auto d-inline-block ms-2" @bind="sortBy">
+            <option value="tutor">Tutor</option>
+            <option value="name">Name</option>
+            <option value="newest">Neuste</option>
+            <option value="oldest">Älteste</option>
+            <option value="mottos">Mottos</option>
+            <option value="votes">Votes</option>
+        </select>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-dark table-striped align-middle">
+            <thead class="small">
+                <tr>
+                    <th>Name</th>
+                    <th>Nickname</th>
+                    <th>Tutor</th>
+                    <th>Erstellt am</th>
+                    <th>Mottos</th>
+                    <th>Votes</th>
+                    <th>Genehmigt</th>
+                    <th>Admin</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var student in FilteredAndSortedStudents)
+                {
+                    <tr>
+                        <td>@student.FullName</td>
+                        <td>@student.Nickname</td>
+                        <td>@student.Tutor</td>
+                        <td>@student.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>@student.Suggestions.Count</td>
+                        <td>@student.Votes.Count</td>
+                        <td>@(student.IsApproved ? "✅" : "❌")</td>
+                        <td>@(student.IsAdmin ? "✅" : "")</td>
+                        <td>
+                            <button class="btn btn-danger btn-sm" title="Schüler löschen" @onclick="() => DeleteStudent(student.Id)">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+
+    @code {
+        private string searchTerm = "";
+        private string sortBy = "tutor";
+
+        private List<Student> allStudents = new();
+
+        protected override void OnInitialized()
+        {
+            allStudents = Db.Students
+                .Include(s => s.Suggestions)
+                .Include(s => s.Votes)
+                .ToList();
+        }
+
+        private IEnumerable<Student> FilteredAndSortedStudents
+        {
+            get
+            {
+                var filtered = allStudents
+                .Where(s =>
+                string.IsNullOrWhiteSpace(searchTerm)
+                || (s.FullName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+                || (s.Nickname?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)
+                );
+
+                return sortBy switch
+                {
+                    "tutor" => filtered.OrderBy(s => s.Tutor),
+                    "name" => filtered.OrderBy(s => s.FullName),
+                    "newest" => filtered.OrderByDescending(s => s.CreatedAt),
+                    "oldest" => filtered.OrderBy(s => s.CreatedAt),
+                    "mottos" => filtered.OrderByDescending(s => s.Suggestions.Count),
+                    "votes" => filtered.OrderByDescending(s => s.Votes.Count),
+                    _ => filtered.OrderBy(s => s.Tutor)
+                };
+            }
+        }
+
+        private void DeleteStudent(int studentId)
+        {
+            var student = Db.Students
+                .Include(s => s.Suggestions)
+                .Include(s => s.Votes)
+                .FirstOrDefault(s => s.Id == studentId);
+            if (student != null)
+            {
+                // Alle Suggestions des Studenten löschen
+                Db.MottoSuggestions.RemoveRange(student.Suggestions);
+                // Alle Votes des Studenten löschen
+                Db.Votes.RemoveRange(student.Votes);
+                // Student löschen
+                Db.Students.Remove(student);
+                Db.SaveChanges();
+                // Liste aktualisieren
+                allStudents.Remove(student);
+                StateHasChanged();
+            }
+        }
+
+    }
+</AdminGate>

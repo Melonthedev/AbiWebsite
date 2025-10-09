@@ -15,7 +15,10 @@ namespace AbiWebsite.Models {
 
         public bool IsApproved { get; set; } = false; // Wurde der Schüler von einem Admin freigeschaltet?
 
-        public bool IsAdmin { get; set; } = false; 
+        public bool IsAdmin { get; set; } = false;
+
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
 
         // Navigation
         public ICollection<MottoSuggestion> Suggestions { get; set; } = new List<MottoSuggestion>();
