@@ -9,6 +9,7 @@
 @using System.Security.Claims
 @using System.Diagnostics
 @using System.Timers
+@using Microsoft.EntityFrameworkCore
 
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
@@ -74,9 +75,9 @@
     })();
 </script>
 
-@if (name != null)
+@if (student != null)
 {
-    <h2 class="mb-5">Hallo, @((nickname == null || nickname == "") ? name : nickname ) 👋</h2>
+    <h2 class="mb-5">Hallo, @(student.GetFormattedName(false)) 👋</h2>
 }
 
 <div class="ranking d-flex justify-content-center align-items-center flex-column">
@@ -100,19 +101,8 @@
 
 
 @code {
-    private string? name;
-    private string? tutor;
-    private string? nickname;
-    private int studentId;
+    private Student? student;
     SuggestionVm? topSuggestion;
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            await JS.InvokeVoidAsync("startCountdown", "countdown", "2027-06-01T21:13:00");
-        }
-    }
-
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,10 +111,8 @@
 
         if (user.Identity?.IsAuthenticated == true)
         {
-            studentId = int.Parse(user.FindFirst("StudentId")!.Value);
-            name = user.Identity.Name;
-            tutor = user.FindFirst("Tutor")?.Value;
-            nickname = user.FindFirst("Nickname")?.Value;
+            var studentId = int.Parse(user.FindFirst("StudentId")!.Value);
+            student = await Db.Students.FirstOrDefaultAsync(s => s.Id == studentId);
         }
 
         topSuggestion = Db.MottoSuggestions
@@ -141,6 +129,5 @@
             .AsEnumerable()
             .OrderByDescending(s => s.UpVotes.Count() - s.DownVotes.Count())
             .FirstOrDefault();
-
     }
 }

@@ -1,4 +1,5 @@
 ﻿@page "/loginwithcode"
+
 <PageTitle>Anmeldung</PageTitle>
 
 @using AbiWebsite.Data
@@ -37,8 +38,6 @@
 
 @code {
     private string? Message;
-
-    // Schritt 2a: Login mit Code
     private Student? existingStudent;
     [SupplyParameterFromForm]
     private LoginModel loginModel { get; set; } = new();

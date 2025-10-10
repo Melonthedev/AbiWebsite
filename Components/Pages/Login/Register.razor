@@ -70,44 +70,30 @@
     private string? Message;
 
     private async Task HandleRegistration() {
-        // Prüfen, ob Student schon existiert
-        var student = Db.Students.FirstOrDefault(s =>
-            s.FullName == StudentModel.FullName);
-
-        if (student == null) {
-            // Neuen Student anlegen
-            student = new Student {
-                FullName = StudentModel.FullName,
-                Email = StudentModel.Email,
-                Tutor = StudentModel.Tutor,
-                Nickname = StudentModel.Nickname
-            };
-            Db.Students.Add(student);
-            await Db.SaveChangesAsync();
+        var name = StudentModel.FullName?.Trim();
+        if (string.IsNullOrWhiteSpace(name)) {
+            Message = "Name fehlt.";
+            return;
         }
 
-        // ✅ Claims bauen
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.Name, student.FullName),
-            new Claim("Tutor", student.Tutor),
-            new Claim("Nickname", student.Nickname == null ? "" : student.Nickname),
-            new Claim("StudentId", student.Id.ToString())
+        // 3-stelligen Login-Code generieren
+        var rnd = new Random();
+        int loginCode = rnd.Next(100, 1000);
+
+        var student = new Student {
+            FullName = name,
+            Nickname = StudentModel.Nickname,
+            Tutor = StudentModel.Tutor,
+            Email = StudentModel.Email,
+            LoginCode = loginCode,
+            CreatedAt = DateTime.UtcNow,
+            IsApproved = false
         };
+        Db.Students.Add(student);
+        await Db.SaveChangesAsync();
 
-        var identity = new ClaimsIdentity(claims, "CookieAuth");
-        var principal = new ClaimsPrincipal(identity);
+        Message = $"Registrierung erfolgreich! Logge dich jetzt ein. Dein Login-Code ist: {loginCode:D3} (wird dir auch per E-Mail zugeschickt, falls implementiert)";
 
-        // ✅ Cookie setzen
-        await HttpContextAccessor.HttpContext!.SignInAsync(
-            "CookieAuth",
-            principal,
-            new AuthenticationProperties {
-                IsPersistent = true,
-                ExpiresUtc = DateTime.UtcNow.AddDays(300)
-            });
-
-        Message = $"✅ Eingeloggt als {student.FullName}";
     }
 
     protected override async Task OnInitializedAsync() {
