@@ -23,7 +23,7 @@ builder.Services.Configure((AbiWebsite.Models.HostOptions options) => builder.Co
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<EmailService>();
-
+builder.Services.AddControllers();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope()) {
@@ -44,7 +44,6 @@ if (!app.Environment.IsDevelopment())
     // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
     app.UseHsts();
 }
-
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseHttpsRedirection();
@@ -53,6 +52,7 @@ app.UseHttpsRedirection();
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

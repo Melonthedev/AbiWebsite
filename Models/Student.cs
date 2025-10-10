@@ -10,6 +10,7 @@ namespace AbiWebsite.Models {
         public string Tutor { get; set; }
 
         [Required(ErrorMessage = "E-Mail kann nicht leer sein.")]
+        [EmailAddress(ErrorMessage = "Ungültige E-Mail-Adresse.")]
         public string Email { get; set; }
         public int LoginCode { get; set; }
 
