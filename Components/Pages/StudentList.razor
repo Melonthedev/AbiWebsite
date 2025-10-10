@@ -33,8 +33,10 @@
             <thead class="small">
                 <tr>
                     <th>Name</th>
+                    <th>E-Mail Adresse</th>
                     <th>Nickname</th>
                     <th>Tutor</th>
+                    <th>Login Code</th>
                     <th>Erstellt am</th>
                     <th>Mottos</th>
                     <th>Votes</th>
@@ -48,8 +50,10 @@
                 {
                     <tr>
                         <td>@student.FullName</td>
+                        <td>@student.Email</td>
                         <td>@student.Nickname</td>
                         <td>@student.Tutor</td>
+                        <td>@student.LoginCode</td>
                         <td>@student.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
                         <td>@student.Suggestions.Count</td>
                         <td>@student.Votes.Count</td>
