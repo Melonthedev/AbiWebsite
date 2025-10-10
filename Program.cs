@@ -1,6 +1,8 @@
 using AbiWebsite.Components;
 using AbiWebsite.Data;
+using AbiWebsite.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,8 +19,10 @@ builder.Services.AddAuthentication("CookieAuth")
         options.AccessDeniedPath = "/denied";
         options.ExpireTimeSpan = TimeSpan.FromDays(300);
     });
+builder.Services.Configure((AbiWebsite.Models.HostOptions options) => builder.Configuration.Bind("Host", options));
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<EmailService>();
 
 var app = builder.Build();
 
