@@ -25,8 +25,10 @@ namespace AbiWebsite.Controllers {
             student.LoginCode = rnd.Next(100, 1000);
             await _db.SaveChangesAsync();
 
-            _emailService.SendLoginCodeMail(student.Email, student.FullName, student.LoginCode.ToString("D3"), isResend: true);
-            return Redirect("/loginwithcode?name=" + Uri.EscapeDataString(name) + "&msg=resent");
+            var emailSent = _emailService.SendLoginCodeMail(student.Email, student.FullName, student.LoginCode.ToString("D3"), isResend: true);
+            
+            if (emailSent) return Redirect("/loginwithcode?name=" + Uri.EscapeDataString(name) + "&msg=resent");
+            else return Redirect("/loginwithcode?name=" + Uri.EscapeDataString(name) + "&msg=notsent");
         }
     }
 }
