@@ -1,8 +1,9 @@
 ﻿@using AbiWebsite.Data
 @using Microsoft.AspNetCore.Components.Authorization
+@rendermode InteractiveServer
 @inject AuthenticationStateProvider AuthProvider
 @inject AbiDbContext Db
-
+@inject NavigationManager Navigation
 
 <div class="ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -44,9 +45,28 @@
                 </NavLink>
             </div>
         }
-
+        @if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(tutor)) {
+            <div class="profile-btn-container d-flex justify-content-center align-items-center my-3 m-3">
+                <button class="btn btn-outline-secondary px-4 py-2 w-100 text-white" style="max-width: 340px; "
+                        @onclick='() => Navigation.NavigateTo("/profile")'>
+                    <i class="bi bi-person-circle me-2"></i>
+                    <span class="profile-name">@name <span class="text-white" style="font-size:0.95em;">(@tutor)</span></span>
+                </button>
+            </div>
+        } else {
+            <div class="profile-btn-container d-flex justify-content-center align-items-center my-3 m-3">
+                <button class="btn btn-outline-secondary px-4 py-2 w-100 text-white" style="max-width: 340px; "
+                        @onclick='() => Navigation.NavigateTo("/login")'>
+                    <i class="bi bi-person-circle me-2"></i>
+                    <span class="profile-name">Login</span>
+                </button>
+            </div>
+        }
     </nav>
+   
 </div>
+
+
 
 @code {
     private string? name;
@@ -68,9 +88,9 @@
             if (student != null)
             {
                 isAdmin = student.IsAdmin;
+                name = student.FullName;
+                tutor = student.Tutor;
             }
         }
-
-
     }
 }
