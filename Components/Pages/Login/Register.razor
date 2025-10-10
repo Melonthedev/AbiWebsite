@@ -15,6 +15,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject AbiWebsite.Services.EmailService EmailService
 
 <h3 class="mb-5">Fast geschafft!</h3>
 
@@ -92,8 +93,12 @@
         Db.Students.Add(student);
         await Db.SaveChangesAsync();
 
-        Message = $"Registrierung erfolgreich! Logge dich jetzt ein. Dein Login-Code ist: {loginCode:D3} (wird dir auch per E-Mail zugeschickt, falls implementiert)";
-
+        var mailSent = EmailService.SendLoginCodeMail(student.Email, student.FullName, loginCode.ToString("D3"));
+        if (mailSent) {
+            Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name));
+        } else {
+            Message = $"Registrierung erfolgreich! Logge dich jetzt ein. Dein Login-Code ist: {loginCode:D3} (E-Mail konnte nicht versendet werden)";
+        }
     }
 
     protected override async Task OnInitializedAsync() {

@@ -92,7 +92,7 @@
             principal,
             new AuthenticationProperties {
                 IsPersistent = true,
-                ExpiresUtc = DateTime.UtcNow.AddDays(300)
+                ExpiresUtc = DateTime.UtcNow.AddDays(600) // Eingeloggt bis zum ABI xD
             });
     }
 
