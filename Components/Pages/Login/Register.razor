@@ -77,6 +77,13 @@
             return;
         }
 
+        var exists = await Db.Students.AnyAsync(s => s.FullName == name);
+        if (exists) {
+            // Wenn Name existiert, direkt zum Login mit Code weiterleiten
+            Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name));
+            return;
+        }
+
         // 3-stelligen Login-Code generieren
         var rnd = new Random();
         int loginCode = rnd.Next(100, 1000);
@@ -90,7 +97,6 @@
             CreatedAt = DateTime.UtcNow,
             IsApproved = false
         };
-        
 
         var mailSent = EmailService.SendLoginCodeMail(student.Email, student.FullName, loginCode.ToString("D3"));
         if (mailSent) {
