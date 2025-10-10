@@ -62,14 +62,12 @@
 }
 
 
-
 <button class="btn btn-success floating-btn" onclick="document.location = '/submitmotto'">
     <i class="bi bi-plus"></i> Vorschlag Einreichen
 </button>
 
 
 @code {
-    // Dictionary zum Merken, welche Suggestion die Votes zeigt
     private Dictionary<int, bool> showVotes = new();
 
     RenderFragment<SuggestionVm> RenderSuggestionCard => suggestion => __builder =>
@@ -80,7 +78,7 @@
             <div class="d-inline-flex justify-content-between">
                 <div class="rank-number">#@(bestSuggestions.IndexOf(suggestion) + 1)</div>
 
-                @if (isAdmin)
+                @if (isAdmin || suggestion.Student.Id == currentStudentId)
                 {
                     <button class="btn btn-danger btn-sm" style="max-width: 200px" @onclick="() => DeleteMotto(suggestion.Id)">
                         <i class="bi bi-trash"></i> Löschen
@@ -90,7 +88,9 @@
             
 
             <div class="suggestion-title">@suggestion.Title</div>
+
             <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
+
             <div class="suggestion-timestamp suggestion-author">
                 Eingereicht am: <b>@suggestion.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</b>
             </div>
@@ -99,8 +99,8 @@
             <div class="votes">
                 <span>👍 @suggestion.UpVotes.Count()</span> |
                 <span>👎 @suggestion.DownVotes.Count()</span>
-
             </div>
+
             <div class="vote-display d-flex justify-content-center align-items-center flex-column">
                 <button id="toggleCountdownBtn" class="btn text-white btn-out d-inline-flex align-items-center gap-2"
                 aria-pressed="false" title="Hide countdown" @onclick="() => ToggleShowVotes(suggestion.Id)">
@@ -114,7 +114,7 @@
                             <ul>
                                 @foreach (var vote in suggestion.UpVotes)
                                 {
-                                    <li>@vote.Student.GetNickNameOrName(isAdmin)</li>
+                                    <li>@vote.Student.GetFormattedName(isAdmin)</li>
                                 }
                             </ul>
                         </div>
@@ -123,16 +123,16 @@
                             <ul>
                                 @foreach (var vote in suggestion.DownVotes)
                                 {
-                                    <li>@vote.Student.GetNickNameOrName(isAdmin)</li>
+                                    <li>@vote.Student.GetFormattedName(isAdmin)</li>
                                 }
                             </ul>
                         </div>
                     </div>
                 }
 
+
                 <p class="mt-3 mb-0">Deine Stimme:</p>
             </div>
-
             <div class="vote-buttons">
                 <button class="btn btn-sm @(GetVoteClass(suggestion.Id, 1))"
                 @onclick="() => Vote(suggestion.Id, 1)">
@@ -207,11 +207,13 @@
                 {
                     Id = s.Id,
                     Title = s.Title,
-                    Author = s.Student.GetNickNameOrName(isAdmin),
+                    Author = s.Student.GetFormattedName(isAdmin),
+                    Description = s.Description,
                     CreatedAt = s.CreatedAt,
                     UpVotes = s.Votes.Where(v => v.Value == 1),
                     DownVotes = s.Votes.Where(v => v.Value == -1),
-                    UserVote = currentUserVote
+                    UserVote = currentUserVote,
+                    Student = s.Student
                 })
             .AsEnumerable()
             .ToList();

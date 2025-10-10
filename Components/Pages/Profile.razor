@@ -1,0 +1,103 @@
+﻿@page "/profile"
+@rendermode InteractiveServer
+<PageTitle>Dein Profil</PageTitle>
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.EntityFrameworkCore
+@using Microsoft.AspNetCore.Components.Authorization
+
+@inject AbiDbContext Db
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3 class="mb-4">Dein Profil</h3>
+
+@if (student == null)
+{
+    <div class="alert alert-danger">Profil konnte nicht geladen werden.</div>
+}
+else
+{
+    <div class="card mb-4 shadow-lg text-white bg-dark" style="max-width: 500px; margin:auto;">
+        <div class="card-body">
+            <div class="d-flex align-items-center mb-3">
+                <i class="bi bi-person-circle" style="font-size:2.5rem; color:#1b6ec2;"></i>
+                <div class="ms-3">
+                    <h4 class="mb-0">@student.FullName</h4>
+                    <div class="text-white">@student.Nickname</div>
+                    <div class="text-white" style="font-size:0.95em;">Tutor: @student.Tutor</div>
+                </div>
+            </div>
+            <div class="mb-2">
+                <span class="badge bg-success me-2">Mottos: @suggestions.Count</span>
+                <span class="badge bg-primary">Votes: @student.Votes.Count</span>
+            </div>
+            <div class="mb-3 text-white" style="font-size:0.95em;">
+                Registriert seit: @student.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+            </div>
+            <button class="btn btn-outline-primary w-100" @onclick="EditProfile">
+                <i class="bi bi-pencil"></i> Profil bearbeiten
+            </button>
+        </div>
+    </div>
+
+    <h5 class="mt-5 mb-3 text-center text-white">Deine Mottovorschläge</h5>
+    @if (suggestions.Count == 0)
+    {
+        <div class="text-center text-white">Du hast noch keine Mottovorschläge eingereicht.</div>
+    }
+    else
+    {
+        <div class="ranking-container" style="max-width:600px; margin:auto;">
+            @foreach (var suggestion in suggestions.OrderByDescending(s => s.CreatedAt))
+            {
+                <div class="rank-card mb-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="fw-bold">@suggestion.Title</div>
+                        <span class="badge bg-secondary">@suggestion.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                    </div>
+                    <div class="mt-2">
+                        <span class="me-2">👍 @suggestion.Votes.Where(v => v.Value == 1).Count()</span>
+                        <span>👎 @suggestion.Votes.Where(v => v.Value == -1).Count()</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private Student? student;
+    private List<MottoSuggestion> suggestions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idClaim = user.FindFirst("StudentId")?.Value;
+        if (idClaim != null && int.TryParse(idClaim, out var studentId))
+        {
+            student = await Db.Students
+                .Include(s => s.Votes)
+                .FirstOrDefaultAsync(s => s.Id == studentId);
+
+            if (student != null)
+            {
+                suggestions = await Db.MottoSuggestions
+                    .Include(s => s.Votes)
+                    .Where(s => s.StudentId == studentId)
+                    .ToListAsync();
+            } else {
+                Navigation.NavigateTo("/login");
+            }
+        } else {
+            Navigation.NavigateTo("/login");
+        }
+    }
+
+    private void EditProfile()
+    {
+        Navigation.NavigateTo("/editprofile");
+    }
+}

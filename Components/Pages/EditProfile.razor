@@ -1,0 +1,109 @@
+﻿@page "/editprofile"
+@rendermode InteractiveServer
+<PageTitle>Profil Bearbeiten</PageTitle>
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.AspNetCore.Authentication
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage
+@using System.Security.Claims
+@using Microsoft.EntityFrameworkCore
+
+@inject AbiDbContext Db
+@inject ProtectedSessionStorage Session
+@inject IHttpContextAccessor HttpContextAccessor
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+
+<h3>Profil bearbeiten:</h3>
+
+@if (!string.IsNullOrEmpty(Message)) {
+    <div class="alert alert-info">@Message</div>
+}
+
+<EditForm Model="StudentModel" OnValidSubmit="HandleUpdate" FormName="login">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label class="form-label">Nickname*</label>
+        <InputText class="form-control bg-dark text-white" @bind-Value="StudentModel.Nickname" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Tutor</label>
+        <InputSelect class="form-control bg-dark text-white" @bind-Value="StudentModel.Tutor">
+            <option value="">-- Bitte wählen --</option>
+            @foreach (var tutor in Tutors) {
+                <option value="@tutor.Id">@tutor.Name</option>
+            }
+        </InputSelect>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">E-Mail Adresse:</label>
+        <InputText class="form-control bg-dark text-white" @bind-Value="StudentModel.Email" />
+    </div>
+
+    <button type="submit" class="btn btn-primary">Fertig</button>
+</EditForm>
+
+@code {
+
+    private List<TutorOption> Tutors = new List<TutorOption>
+    {
+        new TutorOption { Id = "LIM", Name = "Lindenthal" },
+        new TutorOption { Id = "ZIP", Name = "Zippel" },
+        new TutorOption { Id = "HEL", Name = "Heller" },
+        new TutorOption { Id = "KLS", Name = "Kleinschmidt" }
+    };
+
+    public class TutorOption {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+    }
+
+    [SupplyParameterFromForm]
+    private Student StudentModel { get; set; } = new();
+    private string? Message;
+    private int currentUserId;
+    private Student? student;
+
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        var idClaim = user.FindFirst("StudentId");
+        if (idClaim != null && int.TryParse(idClaim.Value, out var id)) {
+            currentUserId = id;
+            student = await Db.Students.FindAsync(id);
+            if (student == null) {
+                Message = "Schüler wurde nicht gefunden!";
+                return;
+            }
+            StudentModel.FullName = student.FullName;
+            StudentModel.Nickname = student.Nickname;
+            StudentModel.Tutor = student.Tutor;
+            StudentModel.Email = student.Email;
+        } else {
+            await InvokeAsync(() => Navigation.NavigateTo("/", true));
+        }
+    }
+
+
+    private async Task HandleUpdate() {
+        if (student == null) {
+            Message = "Schüler wurde nicht gefunden!";
+            return;
+        }
+        student.Nickname = StudentModel.Nickname;
+        student.Tutor = StudentModel.Tutor;
+        student.Email = StudentModel.Email;
+
+        Db.Students.Update(student);
+        await Db.SaveChangesAsync();
+        Message = "✅ Profil aktualisiert!";
+    }
+
+}
