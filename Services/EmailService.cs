@@ -11,7 +11,7 @@ public class EmailService(IOptions<Models.HostOptions> hostOptions)
     /// <summary>
     /// Sendet eine Login-Code-Mail als HTML an den angegebenen Empfänger.
     /// </summary>
-    public bool SendLoginCodeMail(string recepientAddress, string studentName, string loginCode)
+    public bool SendLoginCodeMail(string recepientAddress, string studentName, string loginCode, bool isResend = false)
     {
         string? from = _hostOptions.HostMail ?? _hostOptions.MailCredentials?.Username;
         if (string.IsNullOrEmpty(recepientAddress) || string.IsNullOrEmpty(from))
@@ -25,6 +25,7 @@ public class EmailService(IOptions<Models.HostOptions> hostOptions)
                     <h2 style='color:#1b6ec2;'>Hallo {studentName},</h2>
                     <p>Dein persönlicher Login-Code für das Mottoranking lautet:</p>
                     <div style='font-size:2rem;font-weight:bold;color:#28a745;margin:1.5rem 0;'>{loginCode}</div>
+                    <p>{(isResend ? "Dies ist ein erneut angeforderter Code. Wenn du keinen neuen Code angefordert hast, ignoriere diese Mail." : "")}</p>
                     <p>Bitte bewahre diesen Code sicher auf. Du kannst ihn für zukünftige Logins nutzen.</p>
                     <hr style='margin:2rem 0;' />
                     <small style='color:#888;'>Diese E-Mail wurde automatisch generiert. Bei Fragen wende dich bitte an die Stufensprecher.</small>
