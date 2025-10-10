@@ -7,11 +7,9 @@
 
         public bool IsApproved { get; set; } = false;
 
-        // Wer hat es eingereicht
         public int StudentId { get; set; }
         public Student Student { get; set; } = default!;
 
-        // Navigation
-        public ICollection<Vote> Votes { get; set; } = new List<Vote>();
+        public ICollection<Vote> Votes { get; set; } = [];
     }
 }
