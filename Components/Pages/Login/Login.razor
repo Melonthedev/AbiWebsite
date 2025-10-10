@@ -21,7 +21,7 @@
 
 @if (!string.IsNullOrEmpty(Message))
 {
-    <div class="alert alert-info">@Message</div>
+    <div class="alert alert-danger">@Message</div>
 }
 
 <EditForm Model="nameModel" OnValidSubmit="CheckName" FormName="namecheck">
@@ -51,6 +51,11 @@
         if (string.IsNullOrWhiteSpace(name))
         {
             Message = "Bitte gib deinen vollständigen Namen ein.";
+            return;
+        }
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length < 2) {
+            Message = "Bitte gib sowohl Vor- als auch Nachname ein.";
             return;
         }
         var existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName.ToLower() == name.ToLower());

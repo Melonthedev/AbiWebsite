@@ -18,11 +18,12 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject AbiWebsite.Services.EmailService EmailService
 
 <h3 class="mb-5">Fast geschafft!</h3>
 
 @if (!string.IsNullOrEmpty(Message)) {
-    <div class="alert alert-info">@Message</div>
+    <div class="alert @MessageClass">@Message</div>
 }
 
 <EditForm Model="loginModel" OnValidSubmit="HandleLoginCode" FormName="loginform">
@@ -33,11 +34,16 @@
         <InputText class="form-control bg-dark text-white" maxlength="3" @bind-Value="loginModel.LoginCode" />
     </div>
     <button type="submit" class="btn btn-primary">Einloggen</button>
-    <button type="button" class="btn btn-link" @onclick="ResendLoginCode">Code erneut anfordern</button>
 </EditForm>
+
+<form method="post" action="/api/account/resendlogincode" style="display:inline;">
+    <input type="hidden" name="name" value="@existingStudent?.FullName" />
+    <button type="submit" class="btn btn-link">Code erneut anfordern</button>
+</form>
 
 @code {
     private string? Message;
+    private string MessageClass = "alert-info";
     private Student? existingStudent;
     [SupplyParameterFromForm]
     private LoginModel loginModel { get; set; } = new();
@@ -50,28 +56,21 @@
     private async Task HandleLoginCode() {
         if (existingStudent == null) {
             Message = "Student nicht gefunden.";
+            MessageClass = "alert-danger";
             return;
         }
 
         if (loginModel.LoginCode != existingStudent.LoginCode.ToString("D3")) {
             Message = "Falscher Login-Code!";
+            MessageClass = "alert-danger";
             return;
         }
 
         await SignInStudent(existingStudent);
         Message = $"✅ Eingeloggt als {existingStudent.FullName}";
-        //await Task.Delay(500);
-        //Navigation.NavigateTo("/", true);
-    }
-
-    private async Task ResendLoginCode() {
-        Debug.WriteLine("HIUKFE");
-        if (existingStudent != null) {
-            Message = $"Dein Login-Code ist: {existingStudent.LoginCode:D3} (wird dir auch per E-Mail zugeschickt, falls implementiert)";
-            // Hier ggf. E-Mail-Versand einbauen
-        } else {
-            Message = "NUSSLL";
-        }
+        MessageClass = "alert-info";
+        await Task.Delay(1000);
+        Navigation.NavigateTo("/", true);
     }
 
 
@@ -111,6 +110,16 @@
 
         var uri = Navigation.Uri;
         var query = QueryHelpers.ParseQuery(new Uri(uri).Query);
+
+        if (query.TryGetValue("msg", out var msg)) {
+            if (msg == "resent") {
+                Message = "Der neue Login-Code wurde dir per E-Mail zugeschickt.";
+                MessageClass = "alert-info";
+            } else if (msg == "notfound") {
+                Message = "Account nicht gefunden. Bitte überprüfe deinen Namen.";
+                MessageClass = "alert-danger";
+            }
+        }
 
         if (query.TryGetValue("name", out var nameValue)) {
             existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName == nameValue.ToString());

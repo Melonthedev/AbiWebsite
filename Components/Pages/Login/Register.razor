@@ -90,14 +90,15 @@
             CreatedAt = DateTime.UtcNow,
             IsApproved = false
         };
-        Db.Students.Add(student);
-        await Db.SaveChangesAsync();
+        
 
         var mailSent = EmailService.SendLoginCodeMail(student.Email, student.FullName, loginCode.ToString("D3"));
         if (mailSent) {
+            Db.Students.Add(student);
+            await Db.SaveChangesAsync();
             Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name));
         } else {
-            Message = $"Registrierung erfolgreich! Logge dich jetzt ein. Dein Login-Code ist: {loginCode:D3} (E-Mail konnte nicht versendet werden)";
+            Message = $"Die E-Mail mit dem Login-Code konnte nicht versendet werden. Prüfe deine E-Mail Adresse und versuche es erneut.";
         }
     }
 
