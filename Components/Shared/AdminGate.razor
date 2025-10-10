@@ -9,13 +9,13 @@
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     private bool isAdminChecked = false;
-    private bool isPasswordChecked = false;
+    //private bool isPasswordChecked = false;
     private bool isAdmin = false;
     private int currentUserId;
-    private string inputPassword = "";
-    private string passwordError = "";
+    //private string inputPassword = "";
+    //private string passwordError = "";
 
-    private string? adminPanelPassword => Configuration["AdminPanelPassword"];
+    //private string? adminPanelPassword => Configuration["AdminPanelPassword"];
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,7 +39,7 @@
         }
     }
 
-    private void CheckPassword()
+    /*private void CheckPassword()
     {
         if (inputPassword == adminPanelPassword)
         {
@@ -51,7 +51,7 @@
         {
             passwordError = "Falsches Passwort!";
         }
-    }
+    }*/
 }
 
 @if (!isAdminChecked)
@@ -62,7 +62,7 @@ else if (!isAdmin)
 {
     <div class="alert alert-danger">Kein Zugriff. Du bist kein Admin.</div>
 }
-else if (!isPasswordChecked)
+/*else if (!isPasswordChecked)
 {
     <div class="ranking-container">
         <h4>Admin-Passwort erforderlich</h4>
@@ -78,7 +78,7 @@ else if (!isPasswordChecked)
             <button type="submit" class="btn btn-primary">Bestätigen</button>
         </EditForm>
     </div>
-}
+}*/
 else
 {
     @ChildContent
