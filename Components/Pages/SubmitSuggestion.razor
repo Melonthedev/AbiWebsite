@@ -1,6 +1,6 @@
 ﻿@page "/submitmotto"
 @attribute [Authorize]
-@attribute [IgnoreAntiforgeryToken]
+@rendermode InteractiveServer
 <PageTitle>Motto Vorschlagen</PageTitle>
 
 @using AbiWebsite.Data
@@ -44,7 +44,7 @@
     public MottoSuggestion newSuggestion { get; set; } = new();
 
     private int? currentStudentId;
-    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(5); // z.B. 10 Minuten Cooldown
+    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(5);
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,17 +77,20 @@
             return;
         }
 
-        
+        var exists = await Db.MottoSuggestions
+            .AnyAsync(s => s.Title.Trim().ToLower() == newSuggestion.Title.Trim().ToLower());
+        if (exists)
+        {
+            Message = "⚠️ Dieses Motto wurde bereits vorgeschlagen.";
+            MessageClass = "alert-warning";
+            return;
+        }
 
-        // Admin-Check
         var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
         bool isAdmin = student?.IsAdmin == true;
 
-        // Cooldown-Check: Nur für Nicht-Admins
         if (!isAdmin)
         {
-
-            // Limit: Maximal 15 Vorschläge insgesamt
             var totalSuggestions = await Db.MottoSuggestions.CountAsync();
             if (totalSuggestions >= 15) {
                 Message = "⚠️ Es können nicht mehr als 15 Vorschläge eingereicht werden. Du kannst einen deiner alten Vorschläge in der Übersicht auch löschen, um Platz für einen neuen Vorschlag zu schaffen.";
@@ -111,7 +114,9 @@
 
         newSuggestion.StudentId = currentStudentId.Value;
         newSuggestion.CreatedAt = DateTime.UtcNow;
-        await mottoSuggestionService.AddSuggestionAsync(newSuggestion);
+
+        Db.MottoSuggestions.Add(newSuggestion);
+        await Db.SaveChangesAsync();
 
         Message = "✅ Motto erfolgreich eingereicht!";
         MessageClass = "alert-success";

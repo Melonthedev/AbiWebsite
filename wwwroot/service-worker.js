@@ -1,11 +1,13 @@
 self.addEventListener('push', function (event) {
     console.log("Received Push Event:");
+    console.log(event);
+    console.log(event.data);
     const data = event.data.json();
     console.log(data);
     const options = {
         body: data.body,
-        icon: '/media/cropped-cropped-Logoelement_WFS_tuerkis-1-1-1-192x192.png', // Pfad zu deinem Icon
-        badge: '/media/cropped-cropped-Logoelement_WFS_tuerkis-1-1-1-192x192.png', // Optional: kleines Icon für die Statusleiste
+        icon: '/media/cropped-cropped-Logoelement_WFS_tuerkis-1-1-1-192x192.png', 
+        badge: '/media/cropped-cropped-Logoelement_WFS_tuerkis-1-1-1-192x192.png', 
         data: { url: data.url }
     };
     event.waitUntil(

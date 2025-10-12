@@ -69,6 +69,8 @@
 
 @code {
     private Dictionary<int, bool> showVotes = new();
+    private int? suggestionToDelete = null;
+    private string? deleteTitle = null;
 
     RenderFragment<SuggestionVm> RenderSuggestionCard => suggestion => __builder =>
     {
@@ -80,27 +82,22 @@
 
                 @if (isAdmin || suggestion.Student.Id == currentStudentId)
                 {
-                    <button class="btn btn-danger btn-sm" style="max-width: 200px" @onclick="() => DeleteMotto(suggestion.Id)">
+                    <button class="btn btn-danger btn-sm" style="max-width: 200px"
+                            @onclick="() => ShowDeleteConfirmation(suggestion.Id, suggestion.Title)">
                         <i class="bi bi-trash"></i> Löschen
                     </button>
                 }
             </div>
-            
 
             <div class="suggestion-title">@suggestion.Title</div>
-
             <div class="suggestion-author">Idee von: <b>@suggestion.Author</b></div>
-
             <div class="suggestion-timestamp suggestion-author">
                 Eingereicht am: <b>@suggestion.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</b>
             </div>
-            
-
             <div class="votes">
                 <span>👍 @suggestion.UpVotes.Count()</span> |
                 <span>👎 @suggestion.DownVotes.Count()</span>
             </div>
-
             <div class="vote-display d-flex justify-content-center align-items-center flex-column">
                 <button id="toggleCountdownBtn" class="btn text-white btn-out d-inline-flex align-items-center gap-2"
                 aria-pressed="false" title="Hide countdown" @onclick="() => ToggleShowVotes(suggestion.Id)">
@@ -129,8 +126,6 @@
                         </div>
                     </div>
                 }
-
-
                 <p class="mt-3 mb-0">Deine Stimme:</p>
             </div>
             <div class="vote-buttons">
@@ -281,16 +276,55 @@
         return "btn-outline-secondary";
     }
 
-    private void DeleteMotto(int suggestionId)
-    {
+    private void ShowDeleteConfirmation(int suggestionId, string title) {
+        suggestionToDelete = suggestionId;
+        deleteTitle = title;
+        StateHasChanged();
+    }
+
+    private void CancelDelete() {
+        suggestionToDelete = null;
+        deleteTitle = null;
+        StateHasChanged();
+    }
+
+    private void ConfirmDelete() {
+        if (suggestionToDelete != null) {
+            DeleteMotto(suggestionToDelete.Value);
+            suggestionToDelete = null;
+            deleteTitle = null;
+            StateHasChanged();
+        }
+    }
+
+    private void DeleteMotto(int suggestionId) {
         var suggestion = Db.MottoSuggestions.Find(suggestionId);
-        if (suggestion != null)
-        {
+        if (suggestion != null) {
             Db.MottoSuggestions.Remove(suggestion);
             Db.SaveChanges();
             LoadSuggestions();
             StateHasChanged();
         }
     }
+}
 
+@if (suggestionToDelete != null)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="z-index:1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Vorschlag löschen?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Möchtest du den Vorschlag <b>@deleteTitle</b> wirklich löschen?</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-danger" @onclick="ConfirmDelete">Ja, löschen</button>
+                    <button class="btn btn-secondary" @onclick="CancelDelete">Abbrechen</button>
+                </div>
+            </div>
+        </div>
+    </div>
 }

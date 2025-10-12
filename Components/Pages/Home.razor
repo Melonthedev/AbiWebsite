@@ -15,6 +15,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject AbiDbContext Db
+@inject IConfiguration Config
 
 <h1 class="impact mb-3">ABI27</h1>
 
@@ -103,6 +104,7 @@
 @code {
     private Student? student;
     SuggestionVm? topSuggestion;
+    private string? countdownDate;
 
     protected override async Task OnInitializedAsync()
     {
@@ -129,11 +131,14 @@
             .AsEnumerable()
             .OrderByDescending(s => s.UpVotes.Count() - s.DownVotes.Count())
             .FirstOrDefault();
+
+        // Countdown-Datum aus appsettings.json holen
+        countdownDate = Config["Countdown:Date"] ?? "2027-06-01T21:13:00";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            await JS.InvokeVoidAsync("startCountdown", "countdown", "2027-06-01T21:13:00");
+            await JS.InvokeVoidAsync("startCountdown", "countdown", countdownDate);
         }
     }
 }
