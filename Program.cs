@@ -2,6 +2,7 @@ using AbiWebsite.Components;
 using AbiWebsite.Data;
 using AbiWebsite.Services;
 using Microsoft.EntityFrameworkCore;
+using System.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -26,20 +27,29 @@ builder.Services.AddPushServiceClient(options => {
     options.PrivateKey = builder.Configuration["PushService:PrivateKey"];
 });
 builder.Services.AddScoped<EmailService>();
-builder.Services.AddScoped<MottoSuggestionService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope()) {
     var services = scope.ServiceProvider;
+    var logger = services.GetRequiredService<ILogger<Program>>();
+
+    // Apply any pending migrations
     try {
         var context = services.GetRequiredService<AbiDbContext>();
         await context.Database.MigrateAsync();
     } catch (Exception ex) {
-        var logger = services.GetRequiredService<ILogger<Program>>();
         logger.LogError(ex, "An error occurred while seeding the database.");
     }
+
+    // Send daily summary
+    var timer = new Timer(async _ => {
+        using var scope = app.Services.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<NotificationService>();
+        await service.SendIntervalMottoSummaryAsync();
+    }, null, TimeSpan.Zero, TimeSpan.FromHours(3));
 }
 
 // Configure the HTTP request pipeline.
@@ -61,5 +71,7 @@ app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 //app.MapHub<MottoNotificationHub>("/mottoNotificationHub");
+
+
 
 app.Run();
