@@ -46,6 +46,7 @@ using (var scope = app.Services.CreateScope()) {
 
     // Send daily summary
     var timer = new Timer(async _ => {
+        logger.LogInformation("Send Push-Notification...");
         using var scope = app.Services.CreateScope();
         var service = scope.ServiceProvider.GetRequiredService<NotificationService>();
         await service.SendIntervalMottoSummaryAsync();

@@ -131,6 +131,9 @@ namespace AbiWebsite.Services {
                 } catch (Exception ex) {
                     Console.WriteLine(ex.Message);
                     Debug.WriteLine(ex.Message);
+                    // Subscription aus der Datenbank entfernen
+                    _db.PushSubscriptions.Remove(sub);
+                    await _db.SaveChangesAsync();
                 }
             }
         }
