@@ -99,8 +99,11 @@ namespace AbiWebsite.Services {
                 return;
 
             var title = $"{count} neue Mottovorschläge!";
+            if (count == 1) {
+                title = "Neuer Mottovorschlag!";
+            }
             var listed = mottos.Take(3)
-                .Select(m => $"- {m.Title}{(string.IsNullOrWhiteSpace(m.Description) ? "" : ": " + m.Description)}");
+                .Select(m => $"{m.Title}");
             var description = string.Join("\n", listed);
             if (count > 3)
                 description += $"\n...und {count - 3} weitere";
