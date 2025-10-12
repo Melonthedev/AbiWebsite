@@ -44,6 +44,7 @@
     public MottoSuggestion newSuggestion { get; set; } = new();
 
     private int? currentStudentId;
+    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(10); // z.B. 10 Minuten Cooldown
 
     protected override async Task OnInitializedAsync()
     {
@@ -60,13 +61,11 @@
         }
     }
 
-
-
     private async Task HandleValidSubmit()
     {
         if (string.IsNullOrWhiteSpace(newSuggestion.Title) ||
             newSuggestion.Title.Length < 5 || newSuggestion.Title.Length > 70)
-            {
+        {
             Message = "❌ Dein Motto muss zwischen 5 und 70 Zeichen lang sein.";
             MessageClass = "alert-danger";
             return;
@@ -76,6 +75,38 @@
         {
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
+        }
+
+        
+
+        // Admin-Check
+        var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
+        bool isAdmin = student?.IsAdmin == true;
+
+        // Cooldown-Check: Nur für Nicht-Admins
+        if (!isAdmin)
+        {
+
+            // Limit: Maximal 15 Vorschläge insgesamt
+            var totalSuggestions = await Db.MottoSuggestions.CountAsync();
+            if (totalSuggestions >= 15) {
+                Message = "⚠️ Es können nicht mehr als 15 Vorschläge eingereicht werden. Du kannst einen deiner alten Vorschläge in der Übersicht auch löschen, um Platz für einen neuen Vorschlag zu schaffen.";
+                MessageClass = "alert-warning";
+                return;
+            }
+
+            var lastSuggestion = await Db.MottoSuggestions
+                .Where(s => s.StudentId == currentStudentId.Value)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (lastSuggestion != null && DateTime.UtcNow - lastSuggestion.CreatedAt < SuggestionCooldown)
+            {
+                var wait = SuggestionCooldown - (DateTime.UtcNow - lastSuggestion.CreatedAt);
+                Message = $"⏳ Du kannst erst in {wait.Minutes:D2}:{wait.Seconds:D2} Minuten einen neuen Vorschlag absenden.";
+                MessageClass = "alert-warning";
+                return;
+            }
         }
 
         newSuggestion.StudentId = currentStudentId.Value;
