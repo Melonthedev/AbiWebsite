@@ -1,0 +1,94 @@
+@using Microsoft.AspNetCore.SignalR.Client
+@using System.Diagnostics
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject IConfiguration Config
+@rendermode InteractiveServer
+
+@code {
+    private HubConnection? _hubConnection;
+    private string? _notification;
+    private bool _showPermissionPopup = false;
+    private bool _notificationsEnabled = false;
+    private bool _initialized = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (!firstRender) return;
+
+        var permission = await JS.InvokeAsync<string>("pushInterop.getNotificationPermission");
+        if (permission == "granted") {
+            _notificationsEnabled = true;
+            _showPermissionPopup = false;
+        } else if (permission == null) {
+            _showPermissionPopup = true;
+        }
+
+        StateHasChanged(); // Nur einmal nach dem ersten Render
+
+        // Initialisiere nur, wenn Benachrichtigungen erlaubt sind und noch nicht initialisiert wurde
+        if (_notificationsEnabled && !_initialized) {
+            _initialized = true;
+            await JS.InvokeVoidAsync("pushInterop.registerServiceWorker");
+            var publicKey = Config["PushService:PublicKey"] ?? string.Empty;
+            await JS.InvokeVoidAsync("pushInterop.subscribeToPush", publicKey);
+
+            /*_hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/mottoNotificationHub"))
+                .Build();
+
+            _hubConnection.On<string, string>("ReceiveMottoSuggestion", (title, description) => {
+                InvokeAsync(() => {
+                    _notification = $"Neuer Mottovorschlag: {title}";
+                    StateHasChanged();
+                });
+            });
+
+            await _hubConnection.StartAsync();*/
+        }
+    }
+
+    private async Task EnableNotifications()
+    {
+        await JS.InvokeVoidAsync("pushInterop.setNotificationPermission", "granted");
+        _notificationsEnabled = true;
+        _showPermissionPopup = false;
+        StateHasChanged();
+        // Initialisierung nach Zustimmung
+        await OnAfterRenderAsync(true);
+    }
+
+    private async Task DeclineNotifications()
+    {
+        await JS.InvokeVoidAsync("pushInterop.setNotificationPermission", "declined");
+        _notificationsEnabled = false;
+        _showPermissionPopup = false;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_hubConnection is not null)
+            await _hubConnection.DisposeAsync();
+    }
+}
+
+@if (_showPermissionPopup)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="z-index:1050;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Push-Benachrichtigungen aktivieren?</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Möchtest du Push-Benachrichtigungen für neue Mottovorschläge erhalten?</p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-primary" @onclick="EnableNotifications">Ja, aktivieren</button>
+                    <button class="btn btn-secondary" @onclick="DeclineNotifications">Nein, danke</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}

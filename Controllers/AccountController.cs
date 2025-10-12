@@ -4,8 +4,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace AbiWebsite.Controllers {
-    [Route("api/[controller]")]
     [ApiController]
+    [Route("api/[controller]")]
     public class AccountController : Controller {
         private readonly AbiDbContext _db;
         private readonly EmailService _emailService;

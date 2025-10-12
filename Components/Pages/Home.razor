@@ -130,4 +130,10 @@
             .OrderByDescending(s => s.UpVotes.Count() - s.DownVotes.Count())
             .FirstOrDefault();
     }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
+            await JS.InvokeVoidAsync("startCountdown", "countdown", "2027-06-01T21:13:00");
+        }
+    }
 }

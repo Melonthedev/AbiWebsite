@@ -1,5 +1,4 @@
-﻿
-using AbiWebsite.Models;
+﻿using AbiWebsite.Models;
 using Microsoft.EntityFrameworkCore;
 using System;
 
@@ -10,6 +9,7 @@ namespace AbiWebsite.Data {
         public DbSet<Student> Students { get; set; } = default!;
         public DbSet<MottoSuggestion> MottoSuggestions { get; set; } = default!;
         public DbSet<Vote> Votes { get; set; } = default!;
+        public DbSet<PushSubscription> PushSubscriptions { get; set; } = default!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder) {
             modelBuilder.Entity<Vote>()

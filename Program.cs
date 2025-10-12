@@ -2,7 +2,6 @@ using AbiWebsite.Components;
 using AbiWebsite.Data;
 using AbiWebsite.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -22,8 +21,14 @@ builder.Services.AddAuthentication("CookieAuth")
 builder.Services.Configure((AbiWebsite.Models.HostOptions options) => builder.Configuration.Bind("Host", options));
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddPushServiceClient(options => {
+    options.PublicKey = builder.Configuration["PushService:PublicKey"];
+    options.PrivateKey = builder.Configuration["PushService:PrivateKey"];
+});
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<MottoSuggestionService>();
 builder.Services.AddControllers();
+builder.Services.AddSignalR();
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope()) {
@@ -55,5 +60,6 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+//app.MapHub<MottoNotificationHub>("/mottoNotificationHub");
 
 app.Run();

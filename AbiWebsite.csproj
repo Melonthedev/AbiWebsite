@@ -7,6 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Lib.AspNetCore.WebPush" Version="2.2.2" />
+    <PackageReference Include="Lib.Azure.Functions.Worker.Extensions.WebPush" Version="1.0.1" />
+    <PackageReference Include="Lib.Azure.WebJobs.Extensions.WebPush" Version="1.5.1" />
+    <PackageReference Include="Lib.Net.Http.WebPush" Version="3.3.1" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.9" />
