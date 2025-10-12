@@ -44,7 +44,7 @@
     public MottoSuggestion newSuggestion { get; set; } = new();
 
     private int? currentStudentId;
-    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(10); // z.B. 10 Minuten Cooldown
+    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(5); // z.B. 10 Minuten Cooldown
 
     protected override async Task OnInitializedAsync()
     {
