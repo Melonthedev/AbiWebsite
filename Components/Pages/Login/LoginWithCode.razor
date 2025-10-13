@@ -125,7 +125,7 @@
         }
 
         if (query.TryGetValue("name", out var nameValue)) {
-            existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName == nameValue.ToString());
+            existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName.ToLower() == nameValue.ToString().ToLower());
             if (existingStudent == null) {
                 Navigation.NavigateTo("/login");
             }
