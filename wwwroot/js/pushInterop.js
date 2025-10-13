@@ -10,31 +10,54 @@ window.pushInterop = {
         const registration = await navigator.serviceWorker.ready;
         console.log("Service Worker ready!");
 
+        // Permission explizit anfragen, falls noch nicht gesetzt
+        if (Notification.permission === "default") {
+            try {
+                const permission = await Notification.requestPermission();
+                if (permission !== "granted") {
+                    console.log("Push permission denied by user.");
+                    return "denied";
+                }
+            } catch (err) {
+                console.log("Error requesting notification permission:", err);
+                return "error";
+            }
+        } else if (Notification.permission === "denied") {
+            console.log("Push permission denied by user.");
+            return "denied";
+        }
+
         // Prüfe, ob bereits eine Subscription existiert
         let sub = await registration.pushManager.getSubscription();
         if (!sub) {
-            sub = await registration.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(publicKey)
-            });
-            console.log("Subscribed serviceworker, sending request to backend...");
-            // Sende die Subscription an das Backend
-            var response = await fetch('/api/push/subscribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    endpoint: sub.endpoint,
-                    p256dh: sub.getKey('p256dh') ? btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))) : null,
-                    auth: sub.getKey('auth') ? btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) : null
-                })
-            });
-            console.log('Push subscription sent to server.');
-            console.log("Response status:", response.status);
-            const text = await response.text();
-            console.log("Response body:", text);
+            try {
+                sub = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(publicKey)
+                });
+                console.log("Subscribed serviceworker, sending request to backend...");
+                // Sende die Subscription an das Backend
+                var response = await fetch('/api/push/subscribe', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        endpoint: sub.endpoint,
+                        p256dh: sub.getKey('p256dh') ? btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('p256dh')))) : null,
+                        auth: sub.getKey('auth') ? btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey('auth')))) : null
+                    })
+                });
+                console.log('Push subscription sent to server.');
+                console.log("Response status:", response.status);
+                const text = await response.text();
+                console.log("Response body:", text);
+            } catch (err) {
+                console.log("Push subscription failed:", err);
+                return "error";
+            }
         } else {
             console.log("Push subscription already exists, not subscribing again.");
         }
+        return "granted";
     },
     getNotificationPermission: function () {
         return localStorage.getItem("notificationPermission");
