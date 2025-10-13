@@ -94,17 +94,62 @@
             </div>
         </div>
     }
-    <button class="btn btn-success" @onclick='() => Navigation.NavigateTo("/mottoranking")'>Zu den Vorschlägen</button>
+    <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/mottoranking")' style="font-size:1.1rem; border-radius:2em; padding:0.5em 2em;">
+        <i class="bi bi-arrow-right-circle" style="font-size:1.3rem; margin-right:0.5em;"></i> Zu den Vorschlägen
+    </button>
 </div>
 
+<div class="counter-panel d-flex flex-column align-items-center justify-content-center mt-5 mb-5" style="width:100%; max-width:500px; margin:auto;">
+    <h3 class="text-center display-5 fw-bold mb-4 mt-5" style="color: aqua; text-decoration: underline">COUNTER:</h3>
 
+    <div class="counter-main mb-3 d-flex flex-column align-items-center justify-content-center w-100">
+        <div class="display-1 fw-bold text-white shadow-lg mb-2" style="font-size:3.5rem; text-shadow: 0 0 20px #ff69b4, 0 0 40px #1b6ec2; background: linear-gradient(90deg,#1b6ec2,#ff69b4); border-radius:1em; padding:0.3em 1em;">
+            @totalClicks
+        </div>
+        @if (topClicker != null)
+        {
+            <div class="top-clicker-card d-flex align-items-center justify-content-center mb-2 mt-2" style="background: linear-gradient(90deg,#ff69b4,#1b6ec2); border-radius:1em; padding:0.5em 1em; color:#fff; box-shadow:0 2px 12px rgba(27,110,194,0.15);">
+                <i class="bi bi-trophy-fill" style="font-size:2rem; color:gold; margin-right:0.7em;"></i>
+                <span class="fw-bold" style="font-size:1.2rem;">Top Clicker:</span>
+                <span class="ms-2" style="font-size:1.2rem;">@topClicker.GetFormattedName()</span>
+                <span class="badge bg-pink ms-3" style="font-size:1.1em; background:#ff69b4;">@topClicker.ClickCount</span>
+            </div>
+        }
+    </div>
+    <button class="btn btn-primary" @onclick='() => Navigation.NavigateTo("/counter")' style="font-size:1.1rem; border-radius:2em; padding:0.5em 2em;">
+        <i class="bi bi-arrow-right-circle" style="font-size:1.3rem; margin-right:0.5em;"></i> Zum Counter
+    </button>
+</div>
 
-
+<style>
+    .bg-pink {
+        background: #ff69b4 !important;
+        color: #fff !important;
+    }
+    .top-clicker-card {
+        font-size: 1.1rem;
+    }
+    .counter-panel .display-1 {
+        background: linear-gradient(90deg,#1b6ec2,#ff69b4);
+        color: #fff;
+        border-radius: 1em;
+        padding: 0.3em 1em;
+        text-shadow: 0 0 20px #ff69b4, 0 0 40px #1b6ec2;
+    }
+    @@media (max-width: 600px) {
+        .counter-panel .display-1 { font-size: 2.2rem; }
+        .counter-panel { max-width: 98vw; }
+    }
+</style>
 
 @code {
     private Student? student;
     SuggestionVm? topSuggestion;
     private string? countdownDate;
+
+    // Counter-Panel Daten
+    private int totalClicks = 0;
+    private Student? topClicker;
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,6 +179,11 @@
 
         // Countdown-Datum aus appsettings.json holen
         countdownDate = Config["Countdown:Date"] ?? "2027-06-01T21:13:00";
+
+        // Counter-Panel Daten laden
+        var students = await Db.Students.OrderByDescending(s => s.ClickCount).ToListAsync();
+        totalClicks = students.Sum(s => s.ClickCount);
+        topClicker = students.FirstOrDefault(s => s.ClickCount > 0);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {

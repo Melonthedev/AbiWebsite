@@ -20,6 +20,8 @@ namespace AbiWebsite.Models {
         public bool IsAdmin { get; set; } = false;
 
 
+        public int ClickCount { get; set; } = 0;
+
         public ICollection<MottoSuggestion> Suggestions { get; set; } = [];
         public ICollection<Vote> Votes { get; set; } = [];
 

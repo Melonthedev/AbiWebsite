@@ -1,20 +1,136 @@
 ﻿@page "/counter"
-@using System.Diagnostics
 @rendermode InteractiveServer
+
+@using AbiWebsite.Data
+@using AbiWebsite.Models
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.EntityFrameworkCore
+
+@inject AbiDbContext Db
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
 
 <PageTitle>Counter</PageTitle>
 
-<h1>Counter</h1>
+<div class="counter-page d-flex flex-column align-items-center justify-content-center min-vh-100 bg-gradient" style="background: linear-gradient(135deg, #1b6ec2 0%, #ff69b4 100%);">
 
-<p role="status">Current count: @currentCount</p>
+    <h1 class="counter-title text-white fw-bold mb-4" style="font-size:2.5rem; letter-spacing:2px;">Counter</h1>
 
-<button class="btn btn-primary" @onclick="IncrementCount">Click me</button>
+    <div class="counter-main mb-4 d-flex flex-column align-items-center justify-content-center">
+        <div id="totalClicksDisplay" class="display-1 fw-bold text-white shadow-lg mb-2 animate-pop" style="font-size:5rem; text-shadow: 0 0 20px #ff69b4, 0 0 40px #1b6ec2;">
+            @totalClicks
+        </div>
+        <div class="text-white-50 mb-2" style="font-size:1.1rem;">
+            <span>Deine Klicks: <b class="text-white">@userClicks</b></span>
+        </div>
+        <button class="btn btn-lg btn-pulse" @onclick="IncrementCount" style="background: #ff69b4; color: #fff; font-size:2rem; border-radius:50px; box-shadow: 0 4px 24px rgba(27,110,194,0.2); padding: 0.8em 2em;">
+            <i class="bi bi-cookie" style="font-size:2.2rem; margin-right:0.5em;"></i> Click me
+        </button>
+    </div>
+
+    <div class="leaderboard-container w-100 mt-5 px-2" style="max-width: 500px;">
+        <h3 class="text-center text-white fw-bold mb-3" style="font-size:1.5rem; letter-spacing:1px;">Leaderboard</h3>
+        <div class="list-group shadow-lg">
+            @foreach (var entry in leaderboard.Select((s, i) => new { Student = s, Index = i + 1 })) {
+                <div class="list-group-item d-flex justify-content-between align-items-center @(entry.Student.Id == currentStudentId ? "bg-gradient text-white border-0" : "")"
+                     style="background: @(entry.Student.Id == currentStudentId ? "linear-gradient(90deg,#1b6ec2,#ff69b4)" : "#222"); font-size:1.1rem;">
+                    <span class="fw-bold text-white " style="min-width:2.5em;">@entry.Index</span>
+                    <span class="flex-grow-1 ms-2 text-white ">@entry.Student.GetFormattedName()</span>
+                    <span class="badge bg-pink rounded-pill text-white " style="font-size:1.1em; background:#ff69b4;">@entry.Student.ClickCount</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    .content, .px-4 {
+        padding: 0 !important;
+    }
+    .btn-pulse {
+        position: relative;
+        transition: transform 0.1s;
+    }
+    .btn-pulse:active {
+        transform: scale(1.12);
+            box-shadow: 0 0 40px #08ff08, 0 0 80px #1b6ec2;
+    }
+    .animate-pop {
+        animation: pop 0.2s;
+    }
+    @@keyframes pop {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.15); }
+        100% { transform: scale(1); }
+    }
+    .bg-pink {
+        background: #ff69b4 !important;
+        color: #fff !important;
+    }
+    .counter-page {
+        min-height: 100vh;
+        padding-bottom: 2em;
+    }
+    .counter-main {
+        width: 100%;
+        max-width: 400px;
+    }
+    .leaderboard-container {
+        width: 100%;
+        max-width: 500px;
+    }
+    
+    @@media (max-width: 600px) {
+        .counter-title { font-size: 2rem; }
+        #totalClicksDisplay { font-size: 3rem; }
+        .counter-main { max-width: 95vw; }
+        .leaderboard-container { max-width: 98vw; }
+    }
+</style>
 
 @code {
-    private int currentCount = 0;
+    private int totalClicks = 0;
+    private int userClicks = 0;
+    private int? currentStudentId;
+    private List<Student> leaderboard = new();
 
-    private void IncrementCount()
-    {
-        currentCount++;
+    protected override async Task OnInitializedAsync() {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+        var idClaim = user.FindFirst("StudentId")?.Value;
+        if (idClaim != null && int.TryParse(idClaim, out var studentId)) {
+            currentStudentId = studentId;
+        }
+
+        await LoadCounterData();
+    }
+
+    private async Task LoadCounterData() {
+        leaderboard = await Db.Students
+            .OrderByDescending(s => s.ClickCount)
+            .ToListAsync();
+
+        totalClicks = leaderboard.Sum(s => s.ClickCount);
+        userClicks = leaderboard.FirstOrDefault(s => s.Id == currentStudentId)?.ClickCount ?? 0;
+    }
+
+    private async Task IncrementCount() {
+        if (currentStudentId == null)
+            return;
+
+        var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
+        if (student == null)
+            return;
+
+        student.ClickCount++;
+        await Db.SaveChangesAsync();
+
+        await LoadCounterData();
+        await AnimateCounter();
+        StateHasChanged();
+    }
+
+    private async Task AnimateCounter() {
+        await JS.InvokeVoidAsync("eval", "document.getElementById('totalClicksDisplay').classList.add('animate-pop'); setTimeout(()=>document.getElementById('totalClicksDisplay').classList.remove('animate-pop'),200);");
     }
 }
