@@ -6,7 +6,10 @@ using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AbiDbContext>(options =>
-                options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlite(
+                    builder.Configuration.GetConnectionString("DefaultConnection"), 
+                    o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+                ));
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
