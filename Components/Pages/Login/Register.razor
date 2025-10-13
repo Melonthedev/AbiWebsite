@@ -84,6 +84,17 @@
             return;
         }
 
+        var email = StudentModel.Email?.Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(email)) {
+            Message = "E-Mail fehlt.";
+            return;
+        }
+        var emailExists = await Db.Students.AnyAsync(s => s.Email.ToLower() == email);
+        if (emailExists) {
+            Message = "Diese E-Mail-Adresse wird bereits verwendet. Bitte verwende eine andere oder logge dich ein.";
+            return;
+        }
+
         // 3-stelligen Login-Code generieren
         var rnd = new Random();
         int loginCode = rnd.Next(100, 1000);
