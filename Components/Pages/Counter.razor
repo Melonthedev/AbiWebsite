@@ -9,6 +9,7 @@
 @inject AbiDbContext Db
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
+@inject NavigationManager Navigation
 
 <PageTitle>Counter</PageTitle>
 
@@ -115,12 +116,17 @@
     }
 
     private async Task IncrementCount() {
-        if (currentStudentId == null)
+        if (currentStudentId == null) {
+            Navigation.NavigateTo("/login", true);
             return;
+        }
+            
 
         var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
-        if (student == null)
+        if (student == null) {
+            Navigation.NavigateTo("/login", true);
             return;
+        }
 
         student.ClickCount++;
         await Db.SaveChangesAsync();
