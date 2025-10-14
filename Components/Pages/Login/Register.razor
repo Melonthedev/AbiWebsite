@@ -16,6 +16,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 @inject AbiWebsite.Services.EmailService EmailService
+@inject ILogger<Register> Logger
 
 <h3 class="mb-5">Fast geschafft!</h3>
 
@@ -76,9 +77,10 @@
             Message = "Name fehlt.";
             return;
         }
-
-        var exists = await Db.Students.AnyAsync(s => s.FullName == name);
+        Logger.LogInformation("Attempt Registraion from {Name}", name);
+        var exists = await Db.Students.AnyAsync(s => s.FullName.ToLower() == name.ToLower());
         if (exists) {
+            Logger.LogInformation("Profile of {Name} already exists, redirecting to login", name);
             // Wenn Name existiert, direkt zum Login mit Code weiterleiten
             Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name));
             return;
@@ -101,9 +103,9 @@
 
         var student = new Student {
             FullName = name,
-            Nickname = StudentModel.Nickname,
+            Nickname = StudentModel.Nickname == null ? null : StudentModel.Nickname.Trim(),
             Tutor = StudentModel.Tutor,
-            Email = StudentModel.Email,
+            Email = email,
             LoginCode = loginCode,
             CreatedAt = DateTime.UtcNow,
             IsApproved = false
@@ -113,7 +115,7 @@
         if (mailSent) {
             Db.Students.Add(student);
             await Db.SaveChangesAsync();
-            Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name));
+            Navigation.NavigateTo("/loginWithCode?name=" + Uri.EscapeDataString(name) + "&msg=sent");
         } else {
             Message = $"Die E-Mail mit dem Login-Code konnte nicht versendet werden. Prüfe deine E-Mail Adresse und versuche es erneut.";
         }

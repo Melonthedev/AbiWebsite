@@ -19,6 +19,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
 @inject AbiWebsite.Services.EmailService EmailService
+@inject ILogger<LoginWithCode> Logger
 
 <h3 class="mb-5">Fast geschafft!</h3>
 
@@ -57,18 +58,23 @@
         if (existingStudent == null) {
             Message = "Student nicht gefunden.";
             MessageClass = "alert-danger";
+            Logger.LogWarning("Login-Versuch fehlgeschlagen: Student nicht gefunden.");
             return;
         }
+
+        Logger.LogInformation("Login-Versuch für Student: {Name} (ID={Id}) mit Code '{Code}'", existingStudent.FullName, existingStudent.Id, loginModel.LoginCode);
 
         if (loginModel.LoginCode != existingStudent.LoginCode.ToString("D3")) {
             Message = "Falscher Login-Code!";
             MessageClass = "alert-danger";
+            Logger.LogWarning("Login-Versuch fehlgeschlagen: Falscher Code für Student {Name} (ID={Id})", existingStudent.FullName, existingStudent.Id);
             return;
         }
 
         await SignInStudent(existingStudent);
         Message = $"✅ Eingeloggt als {existingStudent.FullName}";
         MessageClass = "alert-info";
+        Logger.LogInformation("Login erfolgreich: {Name} (ID={Id})", existingStudent.FullName, existingStudent.Id);
         await Task.Delay(1000);
         Navigation.NavigateTo("/", true);
     }
@@ -104,6 +110,7 @@
             int? userID = idClaim != null ? int.Parse(idClaim) : null;
 
             if (await Db.Students.AnyAsync(s => s.Id == userID)) {
+                Logger.LogInformation("LoginWithCode: Benutzer bereits authentifiziert (ID={Id}). Weiterleitung zur Startseite.", userID);
                 await InvokeAsync(() => Navigation.NavigateTo("/", true));
             }
         }
@@ -130,12 +137,12 @@
         if (query.TryGetValue("name", out var nameValue)) {
             existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName.ToLower() == nameValue.ToString().ToLower());
             if (existingStudent == null) {
+                Logger.LogWarning("LoginWithCode: Student mit Name '{Name}' nicht gefunden. Weiterleitung zu /login.", nameValue);
                 Navigation.NavigateTo("/login");
             }
         } else {
+            Logger.LogWarning("LoginWithCode: Kein Name-Parameter in Query. Weiterleitung zu /login.");
             Navigation.NavigateTo("/login");
         }
     }
-
-
 }

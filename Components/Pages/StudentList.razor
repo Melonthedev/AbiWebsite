@@ -8,6 +8,7 @@
 @using Microsoft.EntityFrameworkCore
 
 @inject AbiDbContext Db
+@inject ILogger<StudentList> Logger
 
 <h3>Schülerdatenbank</h3>
 
@@ -40,9 +41,11 @@
                     <th>Erstellt am</th>
                     <th>Mottos</th>
                     <th>Votes</th>
+                    <th>Counter Clicks</th>
                     <th>Genehmigt</th>
                     <th>Admin</th>
                     <th></th>
+                    <th>DB ID</th>
                 </tr>
             </thead>
             <tbody>
@@ -57,6 +60,7 @@
                         <td>@student.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
                         <td>@student.Suggestions.Count</td>
                         <td>@student.Votes.Count</td>
+                        <td>@student.ClickCount</td>
                         <td>@(student.IsApproved ? "✅" : "❌")</td>
                         <td>@(student.IsAdmin ? "✅" : "")</td>
                         <td>
@@ -64,6 +68,7 @@
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
+                        <td>@student.Id</td>
                     </tr>
                 }
             </tbody>
@@ -79,6 +84,7 @@
 
         protected override void OnInitialized()
         {
+            Logger.LogInformation("Admin hat die SDB-Seite aufgerufen.");
             allStudents = Db.Students
                 .Include(s => s.Suggestions)
                 .Include(s => s.Votes)
@@ -117,6 +123,7 @@
                 .FirstOrDefault(s => s.Id == studentId);
             if (student != null)
             {
+                Logger.LogWarning("Admin löscht Schüler: {Name} (ID={Id})", student.FullName, student.Id);
                 // Alle Suggestions des Studenten löschen
                 Db.MottoSuggestions.RemoveRange(student.Suggestions);
                 // Alle Votes des Studenten löschen
@@ -127,6 +134,11 @@
                 // Liste aktualisieren
                 allStudents.Remove(student);
                 StateHasChanged();
+                Logger.LogInformation("Schüler {Name} (ID={Id}) erfolgreich gelöscht.", student.FullName, student.Id);
+            }
+            else
+            {
+                Logger.LogWarning("Löschversuch für nicht gefundenen Schüler mit ID={Id}.", studentId);
             }
         }
 

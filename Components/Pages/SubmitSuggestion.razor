@@ -16,6 +16,7 @@
 @inject AuthenticationStateProvider AuthenticationStateProvider
 @inject NavigationManager Navigation
 @inject NotificationService mottoSuggestionService
+@inject ILogger<SubmitSuggestion> Logger
 
 <h3>Abi-Motto Einreichen</h3>
 
@@ -44,7 +45,7 @@
     public MottoSuggestion newSuggestion { get; set; } = new();
 
     private int? currentStudentId;
-    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(5);
+    private TimeSpan SuggestionCooldown = TimeSpan.FromMinutes(2);
 
     protected override async Task OnInitializedAsync()
     {
@@ -63,16 +64,20 @@
 
     private async Task HandleValidSubmit()
     {
+        Logger.LogInformation("Motto-Vorschlag attempt: Titel='{Title}', StudentId={StudentId}", newSuggestion.Title, currentStudentId);
+
         if (string.IsNullOrWhiteSpace(newSuggestion.Title) ||
             newSuggestion.Title.Length < 5 || newSuggestion.Title.Length > 70)
         {
             Message = "❌ Dein Motto muss zwischen 5 und 70 Zeichen lang sein.";
             MessageClass = "alert-danger";
+            Logger.LogWarning("Ungültige Motto-Länge: {Length}", newSuggestion.Title?.Length ?? 0);
             return;
         }
 
         if (currentStudentId == null || !(await Db.Students.AnyAsync(s => s.Id == currentStudentId.Value)))
         {
+            Logger.LogWarning("Ungültiger oder nicht authentifizierter Student beim Vorschlag.");
             Navigation.NavigateTo("/login", forceLoad: true);
             return;
         }
@@ -92,9 +97,10 @@
         if (!isAdmin)
         {
             var totalSuggestions = await Db.MottoSuggestions.CountAsync();
-            if (totalSuggestions >= 15) {
-                Message = "⚠️ Es können nicht mehr als 15 Vorschläge eingereicht werden. Du kannst einen deiner alten Vorschläge in der Übersicht auch löschen, um Platz für einen neuen Vorschlag zu schaffen.";
+            if (totalSuggestions >= 10) {
+                Message = "⚠️ Es können nicht mehr als 10 Vorschläge pro Person eingereicht werden. Du kannst einen deiner alten Vorschläge in der Übersicht auch löschen, um Platz für einen neuen Vorschlag zu schaffen.";
                 MessageClass = "alert-warning";
+                Logger.LogWarning("Maximale Vorschlagsanzahl bei Student {Student} erreicht: {Count}", student?.FullName ?? currentStudentId.ToString(), totalSuggestions);
                 return;
             }
 
@@ -108,6 +114,7 @@
                 var wait = SuggestionCooldown - (DateTime.UtcNow - lastSuggestion.CreatedAt);
                 Message = $"⏳ Du kannst erst in {wait.Minutes:D2}:{wait.Seconds:D2} Minuten einen neuen Vorschlag absenden.";
                 MessageClass = "alert-warning";
+                Logger.LogWarning("Cooldown aktiv für Student {Student}. Noch {Minutes} Minuten.", student?.FullName ?? currentStudentId.ToString(), wait.TotalMinutes);
                 return;
             }
         }
@@ -117,6 +124,8 @@
 
         Db.MottoSuggestions.Add(newSuggestion);
         await Db.SaveChangesAsync();
+
+        Logger.LogInformation("Motto erfolgreich gespeichert: Titel='{Title}', Student {Student}", newSuggestion.Title, student?.FullName ?? currentStudentId.ToString());
 
         Message = "✅ Motto erfolgreich eingereicht!";
         MessageClass = "alert-success";

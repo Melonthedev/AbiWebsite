@@ -15,6 +15,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject ILogger<EditProfile> Logger
 
 <h3>Profil bearbeiten:</h3>
 
@@ -80,6 +81,7 @@
             student = await Db.Students.FindAsync(id);
             if (student == null) {
                 Message = "Schüler wurde nicht gefunden!";
+                Logger.LogWarning("Profilbearbeitung: Schüler mit ID={Id} nicht gefunden.", id);
                 return;
             }
             StudentModel.FullName = student.FullName;
@@ -87,6 +89,7 @@
             StudentModel.Tutor = student.Tutor;
             StudentModel.Email = student.Email;
         } else {
+            Logger.LogWarning("Profilbearbeitung: Kein gültiger StudentId-Claim gefunden.");
             await InvokeAsync(() => Navigation.NavigateTo("/", true));
         }
     }
@@ -95,14 +98,24 @@
     private async Task HandleUpdate() {
         if (student == null) {
             Message = "Schüler wurde nicht gefunden!";
+            Logger.LogWarning("Profilbearbeitung fehlgeschlagen: Schüler nicht geladen.");
             return;
         }
+
+        var oldNickname = student.Nickname;
+        var oldTutor = student.Tutor;
+        var oldEmail = student.Email;
+
         student.Nickname = StudentModel.Nickname;
         student.Tutor = StudentModel.Tutor;
         student.Email = StudentModel.Email;
 
         Db.Students.Update(student);
         await Db.SaveChangesAsync();
+
+        Logger.LogInformation("Profil aktualisiert für StudentId={Id}: Nickname '{OldNickname}'→'{NewNickname}', Tutor '{OldTutor}'→'{NewTutor}', Email '{OldEmail}'→'{NewEmail}'",
+            student.Id, oldNickname, student.Nickname, oldTutor, student.Tutor, oldEmail, student.Email);
+
         Message = "✅ Profil aktualisiert!";
     }
 

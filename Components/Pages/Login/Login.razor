@@ -16,6 +16,7 @@
 @inject IHttpContextAccessor HttpContextAccessor
 @inject AuthenticationStateProvider AuthProvider
 @inject NavigationManager Navigation
+@inject ILogger<Login> Logger
 
 <h3 class="mb-5">Anmeldung</h3>
 
@@ -29,6 +30,7 @@
     <ValidationSummary />
     <div class="mb-3">
         <label class="form-label">Vollständiger Name (Vor- und Nachname)</label>
+        <label class="form-label"><i>Nur zur Identifikation</i></label>
         <InputText class="form-control bg-dark text-white" @bind-Value="nameModel.FullName" />
     </div>
     <button type="submit" class="btn btn-primary">Weiter</button>
@@ -48,6 +50,8 @@
     private async Task CheckName()
     {
         var name = nameModel.FullName?.Trim();
+        Logger.LogInformation("Login attempt with name: {Name}", name);
+
         if (string.IsNullOrWhiteSpace(name))
         {
             Message = "Bitte gib deinen vollständigen Namen ein.";
@@ -60,8 +64,10 @@
         }
         var existingStudent = await Db.Students.FirstOrDefaultAsync(s => s.FullName.ToLower() == name.ToLower());
         if (existingStudent != null) {
+            Logger.LogInformation("Student gefunden: {Name}. Weiterleitung zu LoginWithCode.", name);
             Navigation.NavigateTo("/loginwithcode?name=" + Uri.EscapeDataString(name));
         } else {
+            Logger.LogInformation("Student nicht gefunden: {Name}. Weiterleitung zu Register.", name);
             Navigation.NavigateTo("/register?name=" + Uri.EscapeDataString(name));
         }
     }

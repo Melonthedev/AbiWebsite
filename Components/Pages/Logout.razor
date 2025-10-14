@@ -3,12 +3,16 @@
 @using Microsoft.AspNetCore.Components.Authorization
 @inject IHttpContextAccessor HttpContextAccessor
 @inject NavigationManager Navigation
+@inject ILogger<Logout> Logger
 
 <h3>Du wirst abgemeldet...</h3>
 
 @code {
     protected override async Task OnInitializedAsync()
     {
+        var userName = HttpContextAccessor.HttpContext?.User?.Identity?.Name ?? "Unbekannt";
+        Logger.LogInformation("User '{UserName}' logged out.", userName);
+
         await HttpContextAccessor.HttpContext!.SignOutAsync("CookieAuth");
         Navigation.NavigateTo("/login", true);
     }
