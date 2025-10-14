@@ -5,7 +5,6 @@
 @using AbiWebsite.Models
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.EntityFrameworkCore
-
 @inject AbiDbContext Db
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
@@ -95,6 +94,10 @@
     private int? currentStudentId;
     private List<Student> leaderboard = new();
 
+    // Klicks lokal puffern und periodisch speichern
+    private int bufferedClicks = 0;
+    private System.Timers.Timer? flushTimer;
+
     protected override async Task OnInitializedAsync() {
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         var user = authState.User;
@@ -104,15 +107,24 @@
         }
 
         await LoadCounterData();
+
+        // Timer für das periodische Speichern der Klicks (z.B. alle 3 Sekunden)
+        flushTimer = new System.Timers.Timer(3000);
+        flushTimer.Elapsed += async (_, _) => await FlushClicksAsync();
+        flushTimer.AutoReset = true;
+        flushTimer.Start();
     }
 
     private async Task LoadCounterData() {
-        leaderboard = await Db.Students
+        try {
+            leaderboard = await Db.Students
             .OrderByDescending(s => s.ClickCount)
             .ToListAsync();
 
-        totalClicks = leaderboard.Sum(s => s.ClickCount);
-        userClicks = leaderboard.FirstOrDefault(s => s.Id == currentStudentId)?.ClickCount ?? 0;
+            totalClicks = leaderboard.Sum(s => s.ClickCount) + bufferedClicks;
+            userClicks = leaderboard.FirstOrDefault(s => s.Id == currentStudentId)?.ClickCount ?? 0;
+            userClicks += bufferedClicks;
+        } catch {}
     }
 
     private async Task IncrementCount() {
@@ -120,20 +132,35 @@
             Navigation.NavigateTo("/login", true);
             return;
         }
-            
 
-        var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
-        if (student == null) {
-            Navigation.NavigateTo("/login", true);
-            return;
-        }
-
-        /*student.ClickCount++;
-        await Db.SaveChangesAsync();
-
-        await LoadCounterData();
+        bufferedClicks++;
+        totalClicks++;
+        userClicks++;
         await AnimateCounter();
-        StateHasChanged();*/
+        StateHasChanged();
+    }
+
+    private async Task FlushClicksAsync() {
+        if (bufferedClicks == 0 || currentStudentId == null)
+            return;
+
+        try {
+            var student = await Db.Students.FirstOrDefaultAsync(s => s.Id == currentStudentId.Value);
+            if (student != null) {
+                student.ClickCount += bufferedClicks;
+                await Db.SaveChangesAsync();
+            }
+        } catch {}
+        bufferedClicks = 0;
+        await LoadCounterData();
+        await InvokeAsync(() => StateHasChanged());
+    }
+
+    public void Dispose()
+    {
+        flushTimer?.Stop();
+        flushTimer?.Dispose();
+        _ = FlushClicksAsync();
     }
 
     private async Task AnimateCounter() {
