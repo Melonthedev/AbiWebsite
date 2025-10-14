@@ -10,6 +10,11 @@ window.pushInterop = {
         const registration = await navigator.serviceWorker.ready;
         console.log("Service Worker ready!");
 
+        if (typeof Notification === "undefined") {
+            console.log("Push-API nicht unterstützt (Notification ist undefined).");
+            return "unsupported";
+        }
+
         // Permission explizit anfragen, falls noch nicht gesetzt
         if (Notification.permission === "default") {
             try {
@@ -64,7 +69,8 @@ window.pushInterop = {
     },
     setNotificationPermission: function (value) {
         localStorage.setItem("notificationPermission", value);
-    }
+    },
+
 };
 
 function urlBase64ToUint8Array(base64String) {
@@ -79,3 +85,4 @@ function urlBase64ToUint8Array(base64String) {
     }
     return outputArray;
 }
+

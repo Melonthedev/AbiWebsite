@@ -79,6 +79,11 @@
 @if (student != null)
 {
     <h2 class="mb-5">Hallo, @(student.GetFormattedName(false)) 👋</h2>
+} else {
+    <h2 class="mb-3">Du willst auch mit abstimmen?</h2>
+    <button class="btn btn-primary mb-4" @onclick='() => Navigation.NavigateTo("/login")' style="font-size:1.1rem; border-radius:2em; padding:0.5em 2em;">
+        <i class="bi bi-arrow-right-circle" style="font-size:1.3rem; margin-right:0.5em;"></i> Zum Login
+    </button>
 }
 
 <div class="ranking d-flex justify-content-center align-items-center flex-column">

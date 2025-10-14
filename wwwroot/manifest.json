@@ -1,0 +1,16 @@
+{
+  "name": "ABI 27",
+  "short_name": "ABI27",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1b6ec2",
+  "theme_color": "#ff69b4",
+  "description": "Die ABI27 Web-App",
+  "icons": [
+    {
+      "src": "/media/cropped-cropped-Logoelement_WFS_tuerkis-1-1-1-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

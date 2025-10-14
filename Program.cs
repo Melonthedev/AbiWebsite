@@ -24,10 +24,13 @@ builder.Services.AddAuthentication("CookieAuth")
 builder.Services.Configure((AbiWebsite.Models.HostOptions options) => builder.Configuration.Bind("Host", options));
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddPushServiceClient(options => {
+/*builder.Services.AddPushServiceClient(options => {
+    options.Subject = builder.Configuration["PushService:Subject"];
     options.PublicKey = builder.Configuration["PushService:PublicKey"];
     options.PrivateKey = builder.Configuration["PushService:PrivateKey"];
-});
+    options.DefaultAuthenticationScheme = Lib.Net.Http.WebPush.Authentication.VapidAuthenticationScheme.Vapid;
+    options.Expiration = 60 * 60;
+});*/
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddControllers();
@@ -52,7 +55,7 @@ var timer = new Timer(async _ => {
     logger.LogInformation("Send Push-Notification...");
     var service = scope.ServiceProvider.GetRequiredService<NotificationService>();
     await service.SendIntervalMottoSummaryAsync();
-}, null, TimeSpan.FromHours(0), TimeSpan.FromHours(3)); // alle 3 Stunden
+}, null, TimeSpan.FromHours(3), TimeSpan.FromHours(3)); // alle 3 Stunden
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

@@ -9,6 +9,7 @@
     private bool _showPermissionPopup = false;
     private bool _notificationsEnabled = false;
     private bool _initialized = false;
+    private bool _showPwaPopup = false;
 
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender) return;
@@ -28,7 +29,12 @@
             _initialized = true;
             await JS.InvokeVoidAsync("pushInterop.registerServiceWorker");
             var publicKey = Config["PushService:PublicKey"] ?? string.Empty;
-            await JS.InvokeVoidAsync("pushInterop.subscribeToPush", publicKey);
+            var result = await JS.InvokeAsync<string>("pushInterop.subscribeToPush", publicKey);
+
+            if (result == "unsupported" && permission != "dismissed") {
+                _showPwaPopup = true;
+                StateHasChanged();
+            }
         }
     }
 
@@ -50,6 +56,12 @@
         StateHasChanged();
     }
 
+    private async Task ClosePwaPopup()
+    {
+        await JS.InvokeVoidAsync("pushInterop.setNotificationPermission", "dismissed");
+        _showPwaPopup = false;
+        StateHasChanged();
+    }
 }
 
 @if (_showPermissionPopup)
@@ -67,6 +79,30 @@
                 <div class="modal-footer border-secondary">
                     <button class="btn btn-primary" @onclick="EnableNotifications">Ja, aktivieren</button>
                     <button class="btn btn-secondary" @onclick="DeclineNotifications">Nein, danke</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showPwaPopup)
+{
+    <div class="modal-backdrop fade show"></div>
+    <div class="modal d-block" tabindex="-1" style="z-index:1060;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">App zum Home-Bildschirm hinzufügen</h5>
+                </div>
+                <div class="modal-body">
+                    <p>So kannst du Push-Benachrichtigungen erhalten.</p>
+                    <p>
+                        Tippe auf 
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24" viewBox="0 0 24 24" width="24"><path d="M0 0h24v24H0V0z" fill="none" /><path d="M16 5l-1.42 1.42-1.59-1.59V16h-1.98V4.83L9.42 6.42 8 5l4-4 4 4zm4 5v11c0 1.1-.9 2-2 2H6c-1.11 0-2-.9-2-2V10c0-1.11.89-2 2-2h3v2H6v11h12V10h-3V8h3c1.1 0 2 .89 2 2z" fill="white" /></svg><b>Teilen</b> und dann auf <b>Zum Home-Bildschirm hinzufügen</b>.<br>
+                    </p>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-success" @onclick="ClosePwaPopup">OK</button>
                 </div>
             </div>
         </div>

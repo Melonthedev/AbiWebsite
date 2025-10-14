@@ -1,56 +1,12 @@
 using AbiWebsite.Data;
-using Lib.Net.Http.WebPush;
-using System.Diagnostics;
+using System.Text.Json;
+using WebPush;
 
 namespace AbiWebsite.Services {
-    public class NotificationService(AbiDbContext db, PushServiceClient pushClient) {
+    public class NotificationService(AbiDbContext db, ILogger<NotificationService> logger, IConfiguration config) {
         private readonly AbiDbContext _db = db;
-        private readonly PushServiceClient _pushClient = pushClient;
-
-        public async Task SendDailyMottoSummaryAsync() {
-            var today = DateTime.UtcNow.Date;
-            var mottos = _db.MottoSuggestions
-                .Where(m => m.CreatedAt.Date == today)
-                .ToList();
-
-            int count = mottos.Count;
-            if (count == 0)
-                return;
-
-            var title = $"{count} neue Mottovorschläge!";
-            var listed = mottos.Take(3)
-                .Select(m => $"- {m.Title}{(string.IsNullOrWhiteSpace(m.Description) ? "" : ": " + m.Description)}");
-            var description = string.Join("\n", listed);
-            if (count > 3)
-                description += $"\n...und {count - 3} weitere";
-
-            var url = "/mottoranking";
-
-            var payload = $"{{\"title\":\"{title}\",\"body\":\"{description}\",\"url\":\"{url}\"}}";
-
-            var subscriptions = _db.PushSubscriptions.ToList();
-            foreach (var sub in subscriptions) {
-                var pushSubscription = new Lib.Net.Http.WebPush.PushSubscription {
-                    Endpoint = sub.Endpoint,
-                    Keys = new Dictionary<string, string> {
-                        ["p256dh"] = sub.P256DH,
-                        ["auth"] = sub.Auth
-                    }
-                };
-
-                var message = new PushMessage(payload) {
-                    Topic = "Motto-Tageszusammenfassung",
-                    Urgency = PushMessageUrgency.Normal
-                };
-
-                try {
-                    await _pushClient.RequestPushMessageDeliveryAsync(pushSubscription, message);
-                } catch (Exception ex) {
-                    Console.WriteLine(ex.Message);
-                    Debug.WriteLine(ex.Message);
-                }
-            }
-        }
+        private readonly ILogger<NotificationService> _logger = logger;
+        private readonly IConfiguration _config = config;
 
         public async Task SendIntervalMottoSummaryAsync() {
             var now = DateTime.UtcNow;
@@ -74,31 +30,47 @@ namespace AbiWebsite.Services {
                 description += $"\n...und {count - 3} weitere";
 
             var url = "/mottoranking";
-            var payload = $"{{\"title\":\"{title}\",\"body\":\"{description}\",\"url\":\"{url}\"}}";
+            var payloadObj = new { title, body = description, url };
+            var payload = JsonSerializer.Serialize(payloadObj);
 
             var subscriptions = _db.PushSubscriptions.ToList();
             foreach (var sub in subscriptions) {
-                var pushSubscription = new PushSubscription {
-                    Endpoint = sub.Endpoint,
-                    Keys = new Dictionary<string, string> {
-                        ["p256dh"] = sub.P256DH,
-                        ["auth"] = sub.Auth
-                    }
-                };
+                _logger.LogInformation("Found Subscription: " + sub.Endpoint);
 
-                var message = new PushMessage(payload) {
-                    Topic = "Motto-Zusammenfassung",
-                    Urgency = PushMessageUrgency.Normal
-                };
+                var subject = _config["PushService:Subject"];
+                var publicKey = _config["PushService:PublicKey"];
+                var privateKey = _config["PushService:PrivateKey"];
+
+                var pushsubscription = new PushSubscription(sub.Endpoint, sub.P256DH, sub.Auth);
+                var vapidDetails = new VapidDetails(subject, publicKey, privateKey);
+                var webPushClient = new WebPushClient();
 
                 try {
-                    await _pushClient.RequestPushMessageDeliveryAsync(pushSubscription, message);
+                    await webPushClient.SendNotificationAsync(pushsubscription, payload, vapidDetails);
+                    _logger.LogInformation($"Sent Push Notification! (P256DH {pushsubscription.P256DH})");
                 } catch (Exception ex) {
-                    Console.WriteLine(ex.Message);
-                    Debug.WriteLine(ex.Message);
-                    // Subscription aus der Datenbank entfernen
-                    _db.PushSubscriptions.Remove(sub);
-                    await _db.SaveChangesAsync();
+                    _logger.LogWarning(ex.Message);
+                }
+            }
+        }
+
+        public async Task SendNotificationAsync(string title, string content, string url = "/mottoranking") {
+            var payloadObj = new { title, body = content, url };
+            var payload = JsonSerializer.Serialize(payloadObj);
+            var subscriptions = _db.PushSubscriptions.ToList();
+            foreach (var sub in subscriptions) {
+                _logger.LogInformation("Found Subscription: " + sub.Endpoint);
+                var subject = _config["PushService:Subject"];
+                var publicKey = _config["PushService:PublicKey"];
+                var privateKey = _config["PushService:PrivateKey"];
+                var pushsubscription = new PushSubscription(sub.Endpoint, sub.P256DH, sub.Auth);
+                var vapidDetails = new VapidDetails(subject, publicKey, privateKey);
+                var webPushClient = new WebPushClient();
+                try {
+                    await webPushClient.SendNotificationAsync(pushsubscription, payload, vapidDetails);
+                    _logger.LogInformation($"Sent Push Notification! (P256DH {pushsubscription.P256DH})");
+                } catch (Exception ex) {
+                    _logger.LogWarning(ex.Message);
                 }
             }
         }

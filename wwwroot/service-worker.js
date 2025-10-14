@@ -22,3 +22,16 @@ self.addEventListener('notificationclick', function(event) {
         clients.openWindow(url)
     );
 });
+
+self.addEventListener('install', event => {
+    self.skipWaiting();
+});
+
+self.addEventListener('activate', event => {
+    self.clients.claim();
+});
+
+// Optional: Caching für Offline-Fähigkeit
+self.addEventListener('fetch', event => {
+    event.respondWith(fetch(event.request));
+});

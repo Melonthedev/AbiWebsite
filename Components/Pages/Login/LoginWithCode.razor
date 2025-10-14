@@ -42,7 +42,7 @@
 </form>
 
 @code {
-    private string? Message;
+    private string? Message = "Verwende den Code vom letzten Login oder fordere einen neuen an.";
     private string MessageClass = "alert-info";
     private Student? existingStudent;
     [SupplyParameterFromForm]
@@ -121,6 +121,9 @@
             } else if (msg == "notsent") {
                 Message = "Mail konnte nicht gesendet werden. Bitte lasse dir von einem Stufensprecher helfen.";
                 MessageClass = "alert-danger";
+            } else if (msg == "sent") {
+                Message = "Dein Login-Code wurde dir per E-Mail zugesendet. Er läuft nicht ab, du kannst ihn bei der nächsten Anmeldung wieder verwenden.";
+                MessageClass = "alert-info";
             }
         }
 
