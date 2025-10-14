@@ -2,6 +2,7 @@ using AbiWebsite.Components;
 using AbiWebsite.Data;
 using AbiWebsite.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.DataProtection;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,16 +25,15 @@ builder.Services.AddAuthentication("CookieAuth")
 builder.Services.Configure((AbiWebsite.Models.HostOptions options) => builder.Configuration.Bind("Host", options));
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
-/*builder.Services.AddPushServiceClient(options => {
-    options.Subject = builder.Configuration["PushService:Subject"];
-    options.PublicKey = builder.Configuration["PushService:PublicKey"];
-    options.PrivateKey = builder.Configuration["PushService:PrivateKey"];
-    options.DefaultAuthenticationScheme = Lib.Net.Http.WebPush.Authentication.VapidAuthenticationScheme.Vapid;
-    options.Expiration = 60 * 60;
-});*/
+
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddControllers();
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        builder.Configuration["DataprotectionKeysPath"] ?? "./dataprotection-keys"
+    ));
+
 var app = builder.Build();
 
 // Apply any pending migrations
